@@ -1,0 +1,2358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>组织架构树</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+:root{--canvas:#eef2f6;--surface:#fcfdfe;--surface-2:#f5f8fb;--ink:#1c2533;--muted:#5b6878;--line:#c5d0dc;--line-strong:#a7b5c4;--primary:#2f9e5b;--blue:#3b6fd8;--teal:#0c8599;--danger:#c92a2a;--amber:#f59f00;--shadow:0 2px 8px rgba(30,42,56,.12);--radius:8px;color-scheme:light}
+body{font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;font-size:14px;color:var(--ink);background:var(--canvas);-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,.node-card:focus-visible{outline:3px solid rgba(59,111,216,.42);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+.boot{position:fixed;inset:0;display:grid;place-items:center;color:var(--muted);font-size:14px;padding:24px;text-align:center}
+.boot-error{color:var(--danger)}
+.boot-error pre{margin-top:12px;max-width:720px;white-space:pre-wrap;text-align:left;font-size:12px;background:#fff;border:1px solid #f1c4b3;border-radius:8px;padding:12px;color:var(--ink)}
+.icon{width:14px;height:14px;flex:none}
+.app{height:100vh;display:grid;grid-template-rows:auto auto 1fr;overflow:hidden}
+.topbar{position:relative;z-index:20;background:#fff;border-bottom:1px solid var(--line)}
+.topbar-inner{max-width:1600px;margin:0 auto;padding:8px 16px}
+.title-row{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap}
+.title-row h1{font-size:15px;font-weight:760;white-space:nowrap}
+.title-edit{display:inline-flex;align-items:center;gap:5px;cursor:pointer;border-radius:6px;padding:2px 8px}
+.title-edit .icon{opacity:.35;flex:none}
+.title-edit:hover{background:var(--surface-2)}
+.title-edit:hover .icon{opacity:.8;color:var(--teal)}
+.title-input{font-size:15px;font-weight:760;text-align:center;height:28px;border:1px solid var(--teal);border-radius:6px;padding:0 8px;min-width:220px;max-width:70vw;background:#fff}
+.stats{display:flex;gap:12px;color:var(--muted);font-size:12px;align-items:center;flex-wrap:wrap}
+.stat strong{color:var(--ink);font-weight:760;margin-left:3px}
+.root-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;background:#e6f4f6;color:var(--teal);font-size:12px;font-weight:600;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.controls-row{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 8px;margin-top:6px;background:#f6f8fa;border-radius:8px;padding:8px 12px}
+.ctl-group{display:flex;align-items:center;gap:6px}
+.ctl-sep{width:1px;height:18px;background:var(--line);margin:0 2px}
+.ctl-label{font-size:12px;color:var(--muted)}
+.control,.search-input{height:26px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink);padding:0 8px;font-size:12px}
+.control{min-width:92px}
+.search-wrap{position:relative;display:flex;align-items:center}
+.search-wrap>.icon{position:absolute;left:7px;color:var(--muted);pointer-events:none}
+.search-input{width:220px;padding-left:26px;padding-right:26px}
+.search-clear{position:absolute;right:4px;width:18px;height:18px;border:0;background:transparent;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--muted)}
+.search-clear:hover{background:#e8eef5;color:var(--ink)}
+.search-count{font-size:12px;color:var(--muted);min-width:58px}
+.search-count.miss{color:var(--danger)}
+.btn{height:26px;border:1px solid #b0c4d8;border-radius:6px;background:#f0f5fa;color:#3a5a76;padding:0 9px;font-weight:500;display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;white-space:nowrap;transition:background 160ms ease,color 160ms ease}
+.btn:hover{background:#dde8f2;color:#1e3a56}
+.btn:active{opacity:.85}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--teal);border-color:var(--teal);color:#fff}
+.btn.primary:hover{background:#0a7285}
+.btn.ghost{background:#fff;border-color:var(--line-strong);color:var(--muted)}
+.btn.ghost:hover{color:var(--ink);background:#f1f5f9}
+.btn.lg{height:34px;padding:0 16px;font-size:13px;border-radius:8px}
+.notice{display:flex;align-items:center;gap:8px;justify-content:center;padding:6px 16px;font-size:12px;background:#fff8e6;color:#8a5a00;border-bottom:1px solid #f5dfa6}
+.notice button{margin-left:8px;border:0;background:transparent;color:inherit;cursor:pointer;text-decoration:underline;font-size:12px}
+.popover-anchor{position:relative}
+.popover{position:absolute;top:calc(100% + 6px);left:0;z-index:40;width:270px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(30,42,56,.18);padding:12px;text-align:left}
+.popover h3{font-size:12px;color:var(--muted);font-weight:600;margin:2px 0 6px}
+.popover .hint{font-size:11px;color:var(--muted);margin-top:8px}
+.check{display:flex;align-items:center;gap:8px;padding:4px 4px;font-size:13px;cursor:pointer;border-radius:4px}
+.check:hover{background:var(--surface-2)}
+.check input{accent-color:var(--teal)}
+.check.disabled{cursor:default;color:var(--muted)}
+.check .tag{margin-left:auto;font-size:10px;padding:1px 6px;border-radius:999px;background:#e6f4f6;color:var(--teal)}
+.field-list{max-height:260px;overflow:auto;border-bottom:1px solid #edf1f5;padding-bottom:6px;margin-bottom:6px}
+.workspace{position:relative;overflow:hidden;min-height:0}
+.tree-viewport{position:absolute;inset:0;overflow:auto;padding:48px 28px 120px;cursor:grab;overscroll-behavior:contain}
+.tree-viewport.is-panning{cursor:grabbing;user-select:none}
+.tree-stage{min-width:100%;width:max-content;display:flex;justify-content:center}
+.tree,.tree ul{list-style:none;text-align:center;position:relative}
+.tree ul{display:flex;justify-content:center;padding-top:18px}
+.tree li{position:relative;padding:0 10px;display:flex;flex-direction:column;align-items:center}
+.tree li::before,.tree li::after{content:"";position:absolute;top:-9px;width:50%;height:9px;border-top:1px solid var(--line)}
+.tree li::before{right:50%}
+.tree li::after{left:50%;border-left:1px solid var(--line)}
+.tree li:first-child::before{border-top:0}
+.tree li:last-child::after{border-top:0}
+.tree li:only-child::before{display:none}
+.tree li:only-child::after{border-top:0}
+.tree ul::before{content:"";position:absolute;top:0;left:50%;height:9px;border-left:1px solid var(--line)}
+.tree>li::before,.tree>li::after{display:none}
+.compact-lane{width:max-content;min-width:168px;margin-top:8px;padding:8px;border:1px solid var(--line);border-radius:10px;background:rgba(245,248,251,.72);display:flex;flex-direction:column;align-items:stretch;gap:6px;position:relative}
+.compact-lane::before{content:"";position:absolute;top:-9px;left:50%;height:8px;border-left:1px solid var(--line)}
+.compact-lane li{padding:0;align-items:center;display:flex;flex-direction:column}
+.compact-lane li::before,.compact-lane li::after{display:none}
+.compact-lane .compact-lane{border:none;border-left:2px solid var(--line);margin-left:12px;margin-top:4px;padding:4px 0 2px 10px;min-width:160px;background:transparent;border-radius:0}
+.compact-lane .compact-lane::before{display:none}
+.compact-lane .node-card{box-shadow:none}
+.compact-lane.compact-two-cols{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;align-items:start}
+.compact-lane.compact-two-cols>li{width:100%}
+.node-card{width:158px;min-height:46px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow);padding:10px 8px 8px;cursor:pointer;text-align:center;position:relative;transition:border-color 160ms ease,background 160ms ease,transform 160ms ease,opacity 160ms ease;user-select:none}
+.node-card:hover{border-color:#8fb3c9;transform:translateY(-1px)}
+.node-card.is-root{border:1.5px solid var(--ink)}
+.node-card.is-virtual{border-style:dashed;background:var(--surface-2)}
+.node-card.has-collapsed-children{border-bottom:2.5px solid var(--teal)}
+.node-card.is-match{border-color:var(--primary);box-shadow:0 0 0 3px rgba(47,158,91,.28);background:#f0faf3}
+.node-card.is-current{box-shadow:0 0 0 3px rgba(47,158,91,.35),0 0 0 6px rgba(245,159,0,.45)}
+.node-card.is-dimmed{opacity:.32}
+.node-name{font-weight:700;font-size:13px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--teal)}
+.node-card mark{background:#ffe066;color:inherit;border-radius:2px;padding:0 1px}
+.node-field{color:var(--muted);font-size:11px;line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.node-field .lbl{color:#8a96a3}
+.collapse-bar{display:flex;align-items:center;justify-content:center;gap:3px;margin:7px -8px -8px;height:18px;font-size:10.5px;color:var(--teal);background:#e8f5f7;border-top:1px dashed #a9d6dd;border-radius:0 0 7px 7px}
+.node-card:hover .collapse-bar{background:#d5eef2}
+.card-btn{position:absolute;right:-9px;width:20px;height:20px;border:1px solid var(--line-strong);border-radius:50%;background:#fff;color:var(--muted);display:grid;place-items:center;z-index:5;cursor:pointer;padding:0;transition:all 160ms ease}
+.card-btn:hover{background:var(--blue);border-color:var(--blue);color:#fff}
+.card-btn .icon{width:11px;height:11px}
+/* 编辑模式 */
+.btn.is-on{background:var(--amber);border-color:var(--amber);color:#fff}
+.btn.is-on:hover{filter:brightness(1.05);background:var(--amber);color:#fff}
+.edit-tip{display:flex;align-items:center;gap:8px;justify-content:center;padding:6px 16px;font-size:12px;background:#fff4e6;color:#a05a00;border-bottom:1px solid #ffd8a8}
+.app.is-edit .node-card{cursor:grab}
+.app.is-edit .node-card.is-dimmed{pointer-events:auto}
+.node-card.is-drag{opacity:.4}
+.node-card.drop-ok{outline:2px dashed var(--primary);outline-offset:2px;background:#eefaf1}
+.node-card.drop-bad{outline:2px dashed var(--danger);outline-offset:2px}
+.edit-acts{position:absolute;top:-11px;right:-8px;display:flex;gap:3px;z-index:6}
+.edit-act{width:21px;height:21px;border:1px solid var(--line-strong);border-radius:50%;background:#fff;color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0;transition:all 140ms ease}
+.edit-act .icon{width:12px;height:12px}
+.edit-act.add:hover{background:var(--primary);border-color:var(--primary);color:#fff}
+.edit-act.edit:hover{background:var(--blue);border-color:var(--blue);color:#fff}
+.edit-act.del:hover{background:var(--danger);border-color:var(--danger);color:#fff}
+.top-drop{margin:0 auto 14px;max-width:420px;padding:10px;border:2px dashed var(--line-strong);border-radius:10px;text-align:center;font-size:12px;color:var(--muted);background:#fafcfe}
+.top-drop.drop-ok{border-color:var(--primary);color:var(--primary);background:#eefaf1}
+.del-choice{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.del-opt{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.del-opt:hover{border-color:var(--line-strong);background:var(--surface-2)}
+.del-opt input{margin-top:2px;accent-color:var(--teal)}
+.del-opt .t{font-weight:600;font-size:13px}
+.del-opt .d{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5}
+.drag-ghost{position:fixed;z-index:300;pointer-events:none;background:#fff;border:2px solid var(--teal);border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;color:var(--teal);box-shadow:0 8px 24px rgba(20,28,40,.22);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ver-save{display:flex;gap:8px;margin-bottom:12px}
+.ver-save input{flex:1;height:34px;border:1px solid var(--line-strong);border-radius:6px;padding:0 10px;font-size:13px}
+.ver-list{list-style:none;display:flex;flex-direction:column;gap:6px;max-height:50vh;overflow:auto}
+.ver-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:8px}
+.ver-item .meta{flex:1;min-width:0}
+.ver-item .nm{font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ver-item .sub{font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ver-empty{text-align:center;color:var(--muted);font-size:13px;padding:24px 0}
+.ver-banner{display:flex;align-items:center;gap:8px;justify-content:center;padding:6px 16px;font-size:12px;background:#e6f4f6;color:#0a6b7a;border-bottom:1px solid #a9d6dd}
+.ver-banner .link{border:0;background:transparent;color:var(--teal);text-decoration:underline;cursor:pointer;font-size:12px;padding:0}
+.ver-banner .x{border:0;background:transparent;color:inherit;cursor:pointer;display:grid;place-items:center;padding:0;width:18px;height:18px}
+.overlay{position:fixed;inset:0;z-index:100;background:rgba(20,28,40,.38);display:grid;place-items:center;padding:20px}
+.modal{width:min(780px,100%);max-height:calc(100vh - 40px);display:flex;flex-direction:column;background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(20,28,40,.3);overflow:hidden}
+.modal.sm{width:min(460px,100%)}
+.modal-head{padding:14px 18px;border-bottom:1px solid #edf1f5;display:flex;align-items:center;gap:10px}
+.modal-head h2{font-size:15px;font-weight:700}
+.modal-head .sub{font-size:12px;color:var(--muted)}
+.modal-close{margin-left:auto;width:28px;height:28px;border:0;background:transparent;border-radius:6px;cursor:pointer;display:grid;place-items:center;color:var(--muted)}
+.modal-close:hover{background:#f1f5f9;color:var(--ink)}
+.modal-body{padding:16px 18px;overflow:auto}
+.modal-foot{padding:12px 18px;border-top:1px solid #edf1f5;display:flex;justify-content:flex-end;gap:8px;align-items:center}
+.modal-foot .err{margin-right:auto;font-size:12px;color:var(--danger)}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.form-item label{display:block;font-size:12px;font-weight:600;margin-bottom:4px}
+.form-item .req{color:var(--danger);margin-left:2px}
+.form-item .desc{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5}
+.form-item select,.form-item input{width:100%;height:32px;border:1px solid var(--line-strong);border-radius:6px;padding:0 8px;background:#fff;font-size:13px}
+.preview{margin-top:16px}
+.preview h3{font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600}
+.preview-scroll{overflow:auto;border:1px solid #e3e9ef;border-radius:8px;max-height:210px}
+.preview table{border-collapse:collapse;font-size:12px;width:max-content;min-width:100%}
+.preview th,.preview td{padding:6px 10px;border-bottom:1px solid #eef2f6;text-align:left;white-space:nowrap}
+.preview th{background:#f6f8fa;position:sticky;top:0;font-weight:600}
+.preview th.on-primary{background:#e6f4f6;color:var(--teal)}
+.preview th.on-parent{background:#eef3fd;color:var(--blue)}
+.sort-tools{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.sort-list{list-style:none;display:flex;flex-direction:column;gap:4px}
+.sort-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid #e3e9ef;border-radius:6px;background:#fff;font-size:13px;cursor:grab}
+.sort-item.drag-over{border-color:var(--blue);box-shadow:0 -2px 0 var(--blue)}
+.sort-item.dragging{opacity:.4}
+.sort-item .idx{width:22px;color:var(--muted);font-size:12px;text-align:right}
+.sort-item .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sort-item .mv{width:24px;height:24px;border:1px solid var(--line);border-radius:4px;background:#fff;cursor:pointer;display:grid;place-items:center;padding:0;font-size:11px}
+.sort-item .mv:disabled{opacity:.3;cursor:default}
+.empty{position:absolute;inset:0;display:grid;place-items:center;padding:24px;overflow:auto}
+.empty-card{max-width:580px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:28px 32px;text-align:center;transition:border-color 160ms ease,background 160ms ease}
+.empty-card.drag-on{border:2px dashed var(--teal);background:#f2fafb}
+.empty-card h2{font-size:18px;margin-bottom:8px}
+.empty-card p{color:var(--muted);font-size:13px;line-height:1.7}
+.empty-card ol{text-align:left;color:var(--muted);font-size:13px;line-height:1.9;margin:12px 0 18px 20px}
+.empty-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;background:rgba(28,37,51,.92);color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;z-index:200;transition:all 200ms ease;max-width:80vw}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.error{background:rgba(201,42,42,.95)}
+.busy{position:fixed;inset:0;z-index:150;display:grid;place-items:center;background:rgba(255,255,255,.55);font-size:13px;color:var(--ink)}
+.help-tip{font-size:11px;color:var(--muted);text-align:center;margin-top:5px}
+.node-agg{margin-top:4px;padding:2px 6px;border-radius:4px;background:#e8f5f7;color:#0a6b7a;font-size:11px;line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.node-agg+.node-agg{margin-top:2px}
+.node-agg .lbl{color:#4b8f99;margin-right:3px}
+.agg-section{margin-top:16px;padding-top:14px;border-top:1px solid #edf1f5}
+.agg-section>.check{font-weight:600}
+.agg-section .desc{font-size:11px;color:var(--muted);font-weight:400;margin-left:4px}
+.agg-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.agg-head,.agg-row{display:grid;grid-template-columns:120px minmax(0,1fr) 150px minmax(0,1fr) 28px;gap:8px;align-items:start}
+.agg-head{font-size:11px;color:var(--muted);font-weight:600}
+.agg-row select,.agg-row input{width:100%;height:30px;border:1px solid var(--line-strong);border-radius:6px;padding:0 6px;background:#fff;font-size:12px}
+.agg-hint{display:block;font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4}
+.agg-hint.warn{color:var(--danger)}
+.agg-del{width:28px;height:30px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--muted);cursor:pointer;display:grid;place-items:center;padding:0}
+.agg-del:hover{border-color:var(--danger);color:var(--danger)}
+.agg-add{align-self:flex-start}
+</style>
+</head>
+<body>
+<div id="boot" class="boot">正在加载…</div>
+<div id="root"></div>
+<!-- 烘焙数据注入点：scripts/bake_data.py 会替换下一行的 null；手工使用时保持 null 即可 -->
+<script>window.__INITIAL_DATA__ = /*__INJECT__*/ null;</script>
+<script id="core-src">
+/* ================================================================
+ * OrgCore：与 UI 无关的纯逻辑（零依赖 PPTX 内核 + PPT 布局 + 构树/字段工具）
+ * 不依赖 React，可在 Node 中单独加载测试。
+ * ================================================================ */
+var OrgCore = (function () {
+  'use strict';
+  /* ---------- 零依赖 PPTX 内核（OOXML + ZIP Store），移植自 OrgChart.jsx ---------- */
+  const _EMU = 914400;
+  const _XMLNS_A = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+  const _XMLNS_R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const _XMLNS_P = 'http://schemas.openxmlformats.org/presentationml/2006/main';
+  const _REL_PACKAGE = 'http://schemas.openxmlformats.org/package/2006/relationships';
+  const _REL_CT = 'http://schemas.openxmlformats.org/package/2006/content-types';
+  const _REL_OFFICE = _XMLNS_R + '/officeDocument';
+  const _REL_SLIDE = _XMLNS_R + '/slide';
+  const _REL_MASTER = _XMLNS_R + '/slideMaster';
+  const _REL_LAYOUT = _XMLNS_R + '/slideLayout';
+  const _REL_THEME = _XMLNS_R + '/theme';
+  const MIME_PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+  const _PPT_FONT = 'Microsoft YaHei';
+  // PPT 配色（hex，无 #）
+  const _PPT_BG = 'F4F6FA', _LINE_C = '8E959E', _CARD_BORDER = 'E2E8F0';
+  const _ROOT_BORDER = '000000', _ROOT_FILL = 'FFFFFF';
+  const _L2_FILL = 'D9D9D9', _L2_BORDER = 'BFBFBF';
+  const _NAME_COLOR = '000000', _META_COLOR = '4B5563', _TITLE_COLOR = '1E2A38';
+
+  function _escXml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+  }
+  function _emu(n) { return Math.round(n * _EMU); }
+
+  const _CRC_TABLE = (function () {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+  function _crc32(bytes) {
+    let crc = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) crc = _CRC_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  // 手写 ZIP（STORE 不压缩）：本地文件头 + 中央目录 + 目录结束记录
+  function _zipStore(files) {
+    const enc = new TextEncoder();
+    const chunks = [];
+    const central = [];
+    let offset = 0;
+    const alloc = (size) => { const buf = new Uint8Array(size); chunks.push(buf); return new DataView(buf.buffer); };
+    for (const f of files) {
+      const name = enc.encode(f.name);
+      const crc = _crc32(f.data);
+      const h = alloc(30);
+      h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0, true);
+      h.setUint16(8, 0, true); h.setUint16(10, 0, true); h.setUint16(12, 0x21, true);
+      h.setUint32(14, crc, true); h.setUint32(18, f.data.length, true); h.setUint32(22, f.data.length, true);
+      h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+      chunks.push(name, f.data);
+      central.push({ name, crc, size: f.data.length, offset });
+      offset += 30 + name.length + f.data.length;
+    }
+    const cdStart = offset;
+    for (const c of central) {
+      const h = alloc(46);
+      h.setUint32(0, 0x02014b50, true); h.setUint16(4, 20, true); h.setUint16(6, 20, true);
+      h.setUint16(8, 0, true); h.setUint16(10, 0, true); h.setUint16(12, 0, true); h.setUint16(14, 0x21, true);
+      h.setUint32(16, c.crc, true); h.setUint32(20, c.size, true); h.setUint32(24, c.size, true);
+      h.setUint16(28, c.name.length, true); h.setUint16(30, 0, true); h.setUint16(32, 0, true);
+      h.setUint16(34, 0, true); h.setUint16(36, 0, true); h.setUint32(38, 0, true); h.setUint32(42, c.offset, true);
+      chunks.push(c.name);
+      offset += 46 + c.name.length;
+    }
+    const eocd = alloc(22);
+    eocd.setUint32(0, 0x06054b50, true); eocd.setUint16(4, 0, true); eocd.setUint16(6, 0, true);
+    eocd.setUint16(8, central.length, true); eocd.setUint16(10, central.length, true);
+    eocd.setUint32(12, offset - cdStart, true); eocd.setUint32(16, cdStart, true); eocd.setUint16(20, 0, true);
+    let total = 0;
+    for (const c of chunks) total += c.length;
+    const out = new Uint8Array(total);
+    let p = 0;
+    for (const c of chunks) { out.set(c, p); p += c.length; }
+    return out;
+  }
+
+  // 文本框 / 椭圆 / 矩形（含"整卡多段文字"）形状
+  function _shapeXml(s, id) {
+    const W = _emu(s.w || 0), H = _emu(s.h || 0);
+    const X = _emu(s.x || 0), Y = _emu(s.y || 0);
+    if (s.t === 'text') {
+      const anchor = ({ ctr: 'ctr', middle: 'ctr', top: 't', bottom: 'b' })[s.valign] || 'ctr';
+      const algn = ({ ctr: 'ctr', center: 'ctr', left: 'l', right: 'r', l: 'l', r: 'r' })[s.align] || 'l';
+      const sz = Math.round((s.size || 8) * 100);
+      const bold = s.bold ? ' b="1"' : '';
+      const color = s.color || '000000';
+      const font = _escXml(s.font || _PPT_FONT);
+      const paras = (s.lines || []).map(line =>
+        `<a:p><a:pPr algn="${algn}"/><a:r><a:rPr lang="zh-CN" sz="${sz}"${bold} dirty="0">` +
+        `<a:solidFill><a:srgbClr val="${color}"/></a:solidFill>` +
+        `<a:latin typeface="${font}"/><a:ea typeface="${font}"/></a:rPr>` +
+        `<a:t>${_escXml(line)}</a:t></a:r></a:p>`
+      ).join('');
+      return `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="tx${id}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>` +
+        `<p:spPr><a:xfrm><a:off x="${X}" y="${Y}"/><a:ext cx="${W}" cy="${H}"/></a:xfrm>` +
+        `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr>` +
+        `<p:txBody><a:bodyPr rtlCol="0" wrap="square" anchor="${anchor}"/><a:lstStyle/>${paras}</p:txBody></p:sp>`;
+    }
+    const prst = s.radius ? 'roundRect' : 'rect';
+    const av = s.radius
+      ? `<a:avLst><a:gd name="adj" fmla="val ${Math.max(0, Math.min(50000, Math.round((s.radius / Math.min(s.w || 1, s.h || 1)) * 100000)))}"/></a:avLst>`
+      : '<a:avLst/>';
+    const fill = s.fill ? `<a:solidFill><a:srgbClr val="${s.fill}"/></a:solidFill>` : '<a:noFill/>';
+    const ln = s.line
+      ? `<a:ln w="${Math.round((s.line.width || 1) * 12700)}">${s.line.dash ? '<a:prstDash val="sysDash"/>' : ''}<a:solidFill><a:srgbClr val="${s.line.color}"/></a:solidFill></a:ln>`
+      : '<a:ln w="0"><a:noFill/></a:ln>';
+    const font = _escXml(s.font || _PPT_FONT);
+    const txBody = s.paras
+      ? `<p:txBody><a:bodyPr rtlCol="0" wrap="square" lIns="${s.lIns || 27432}" rIns="${s.rIns || 27432}" tIns="${s.tIns || 18288}" bIns="${s.bIns || 18288}" anchor="${s.vAnchor || 't'}"/><a:lstStyle/>` +
+        s.paras.map(p => {
+          const algn = p.align === 'l' ? 'l' : p.align === 'r' ? 'r' : 'ctr';
+          const spcBef = p.spcBef ? `<a:spcBef><a:spcPts val="${Math.round(p.spcBef * 100)}"/></a:spcBef>` : '';
+          const runs = (p.runs || [{ text: p.text, color: p.color, bold: p.bold, size: p.size }]).map(r => {
+            const rsz = Math.round((r.size || p.size || 8) * 100);
+            const rbold = r.bold ? ' b="1"' : '';
+            // solidFill 必须排在 latin/ea 之前，否则 WPS/PowerPoint 会忽略字体颜色
+            return `<a:r><a:rPr lang="zh-CN" sz="${rsz}"${rbold} dirty="0">` +
+              `<a:solidFill><a:srgbClr val="${r.color || _NAME_COLOR}"/></a:solidFill>` +
+              `<a:latin typeface="${font}"/><a:ea typeface="${font}"/></a:rPr>` +
+              `<a:t>${_escXml(r.text == null ? '' : r.text)}</a:t></a:r>`;
+          }).join('');
+          return `<a:p><a:pPr algn="${algn}">${spcBef}</a:pPr>${runs}</a:p>`;
+        }).join('') + `</p:txBody>`
+      : '';
+    return `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="shp${id}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>` +
+      `<p:spPr><a:xfrm><a:off x="${X}" y="${Y}"/><a:ext cx="${W}" cy="${H}"/></a:xfrm>` +
+      `<a:prstGeom prst="${prst}">${av}</a:prstGeom>${fill}${ln}</p:spPr>${txBody}</p:sp>`;
+  }
+
+  /* 端到端连接符：p:cxnSp + a:stCxn/a:endCxn（框到框吸附），矩形连接点 0=顶 1=左 2=底 3=右
+   * kind='bus' ：父卡底 → 子卡顶，bentConnector4（竖直引出 → 水平母线 → 竖直落下）
+   * kind='rail'：隐形锚点底 → 子卡左，bentConnector3（同列竖直段重合成左侧导轨） */
+  function _connXml(s, id) {
+    const sx = s.x1, sy = s.y1, ex = s.x2, ey = s.y2;
+    const off = { x: Math.min(sx, ex), y: Math.min(sy, ey) };
+    const ext = { w: Math.abs(ex - sx), h: Math.abs(ey - sy) };
+    let xfrmAttr = '', geom;
+    const We = Math.round(ext.w * _EMU), He = Math.round(ext.h * _EMU);
+    const line = '<a:prstGeom prst="line"><a:avLst/></a:prstGeom>';
+    if (s.kind === 'rail') {
+      if (We < 100) { geom = line; if (ey < sy) xfrmAttr = ' flipV="1"'; }
+      else if (He < 100) { geom = line; if (ex < sx) xfrmAttr = ' flipH="1"'; }
+      else {
+        if (ex < sx) xfrmAttr = ' flipH="1"';
+        geom = '<a:prstGeom prst="bentConnector3"><a:avLst><a:gd name="adj1" fmla="val 0"/></a:avLst></a:prstGeom>';
+      }
+    } else if (We < 100) {
+      geom = line; if (ey < sy) xfrmAttr = ' flipV="1"';
+    } else {
+      if (ex < sx) xfrmAttr = ' flipH="1"';
+      const adj2 = s.adj2 !== undefined ? s.adj2 : 50000;
+      geom = `<a:prstGeom prst="bentConnector4"><a:avLst><a:gd name="adj1" fmla="val 0"/><a:gd name="adj2" fmla="val ${adj2}"/></a:avLst></a:prstGeom>`;
+    }
+    return `<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="${id}" name="conn${id}"/>` +
+      `<p:cNvCxnSpPr><a:stCxn id="${s.stId}" idx="${s.stIdx}"/><a:endCxn id="${s.endId}" idx="${s.endIdx}"/></p:cNvCxnSpPr><p:nvPr/></p:nvCxnSpPr>` +
+      `<p:spPr><a:xfrm${xfrmAttr}><a:off x="${_emu(off.x)}" y="${_emu(off.y)}"/>` +
+      `<a:ext cx="${_emu(ext.w)}" cy="${_emu(ext.h)}"/></a:xfrm>${geom}` +
+      `<a:ln w="${Math.round((s.width || 0.75) * 12700)}"><a:solidFill><a:srgbClr val="${s.color || _LINE_C}"/></a:solidFill></a:ln>` +
+      `</p:spPr></p:cxnSp>`;
+  }
+  // 生成单页 .pptx 的全部 OOXML 部件并打包为 ZIP
+  function _buildPptxFile({ width, height, bg, shapes }) {
+    const enc = new TextEncoder();
+    const W = _emu(width), H = _emu(height);
+    const xmlHead = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+    const ns = `xmlns:a="${_XMLNS_A}" xmlns:r="${_XMLNS_R}" xmlns:p="${_XMLNS_P}"`;
+    const spTree = (inner) =>
+      `<p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>` +
+      `<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${W}" cy="${H}"/><a:chOff x="0" y="0"/><a:chExt cx="${W}" cy="${H}"/></a:xfrm></p:grpSpPr>${inner}</p:spTree>`;
+    const slideXml = xmlHead + `<p:sld ${ns}><p:cSld>` +
+      `<p:bg><p:bgPr><a:solidFill><a:srgbClr val="${bg}"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>` +
+      spTree(shapes.map((s, i) => (s.t === 'conn' ? _connXml : _shapeXml)(s, s.__id || i + 2)).join('')) +
+      `</p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`;
+    const emptyTree = spTree('');
+    const masterXml = xmlHead + `<p:sldMaster ${ns}><p:cSld>` +
+      `<p:bg><p:bgRef idx="1001"><a:schemeClr val="bg1"/></p:bgRef></p:bg>${emptyTree}</p:cSld>` +
+      `<p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>` +
+      `<p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst>` +
+      `<p:txStyles><p:titleStyle><a:lvl1pPr algn="ctr"/></p:titleStyle><p:bodyStyle><a:lvl1pPr/></p:bodyStyle>` +
+      `<p:otherStyle><a:lvl1pPr/></p:otherStyle></p:txStyles></p:sldMaster>`;
+    const layoutXml = xmlHead + `<p:sldLayout ${ns}><p:cSld>${emptyTree}</p:cSld>` +
+      `<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>`;
+    const solid3 = '<a:solidFill><a:schemeClr val="phClr"/></a:solidFill>'.repeat(3);
+    const themeXml = xmlHead + `<a:theme xmlns:a="${_XMLNS_A}" name="Theme1"><a:themeElements><a:clrScheme name="Office">` +
+      `<a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1>` +
+      `<a:dk2><a:srgbClr val="44546A"/></a:dk2><a:lt2><a:srgbClr val="E7E6E6"/></a:lt2>` +
+      `<a:accent1><a:srgbClr val="4472C4"/></a:accent1><a:accent2><a:srgbClr val="ED7D31"/></a:accent2>` +
+      `<a:accent3><a:srgbClr val="A5A5A5"/></a:accent3><a:accent4><a:srgbClr val="FFC000"/></a:accent4>` +
+      `<a:accent5><a:srgbClr val="5B9BD5"/></a:accent5><a:accent6><a:srgbClr val="70AD47"/></a:accent6>` +
+      `<a:hlink><a:srgbClr val="0563C1"/></a:hlink><a:folHlink><a:srgbClr val="954F72"/></a:folHlink>` +
+      `</a:clrScheme><a:fontScheme name="Office">` +
+      `<a:majorFont><a:latin typeface="Calibri Light"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont>` +
+      `<a:minorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont>` +
+      `</a:fontScheme><a:fmtScheme name="Office"><a:fillStyleLst>${solid3}</a:fillStyleLst>` +
+      `<a:lnStyleLst><a:ln w="6350" cap="flat"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln>` +
+      `<a:ln w="12700" cap="flat"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln>` +
+      `<a:ln w="19050" cap="flat"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst>` +
+      `<a:effectStyleLst>${'<a:effectStyle><a:effectLst/></a:effectStyle>'.repeat(3)}</a:effectStyleLst>` +
+      `<a:bgFillStyleLst>${solid3}</a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>`;
+    const presXml = xmlHead + `<p:presentation ${ns}>` +
+      `<p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>` +
+      `<p:sldIdLst><p:sldId id="256" r:id="rId2"/></p:sldIdLst>` +
+      `<p:sldSz cx="${W}" cy="${H}"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>`;
+    const rels = (items) => xmlHead + `<Relationships xmlns="${_REL_PACKAGE}">` +
+      items.map(([id, type, target]) => `<Relationship Id="${id}" Type="${type}" Target="${target}"/>`).join('') + `</Relationships>`;
+    const ct = 'application/vnd.openxmlformats-officedocument.presentationml.';
+    const contentTypes = xmlHead + `<Types xmlns="${_REL_CT}">` +
+      `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
+      `<Default Extension="xml" ContentType="application/xml"/>` +
+      `<Override PartName="/ppt/presentation.xml" ContentType="${ct}presentation.main+xml"/>` +
+      `<Override PartName="/ppt/slides/slide1.xml" ContentType="${ct}slide+xml"/>` +
+      `<Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="${ct}slideMaster+xml"/>` +
+      `<Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="${ct}slideLayout+xml"/>` +
+      `<Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/></Types>`;
+    return _zipStore([
+      { name: '[Content_Types].xml', data: enc.encode(contentTypes) },
+      { name: '_rels/.rels', data: enc.encode(rels([['rId1', _REL_OFFICE, 'ppt/presentation.xml']])) },
+      { name: 'ppt/presentation.xml', data: enc.encode(presXml) },
+      { name: 'ppt/_rels/presentation.xml.rels', data: enc.encode(rels([['rId1', _REL_MASTER, 'slideMasters/slideMaster1.xml'], ['rId2', _REL_SLIDE, 'slides/slide1.xml']])) },
+      { name: 'ppt/slides/slide1.xml', data: enc.encode(slideXml) },
+      { name: 'ppt/slides/_rels/slide1.xml.rels', data: enc.encode(rels([['rId1', _REL_LAYOUT, '../slideLayouts/slideLayout1.xml']])) },
+      { name: 'ppt/slideMasters/slideMaster1.xml', data: enc.encode(masterXml) },
+      { name: 'ppt/slideMasters/_rels/slideMaster1.xml.rels', data: enc.encode(rels([['rId1', _REL_LAYOUT, '../slideLayouts/slideLayout1.xml']])) },
+      { name: 'ppt/slideLayouts/slideLayout1.xml', data: enc.encode(layoutXml) },
+      { name: 'ppt/slideLayouts/_rels/slideLayout1.xml.rels', data: enc.encode(rels([['rId1', _REL_MASTER, '../slideMasters/slideMaster1.xml'], ['rId2', _REL_THEME, '../theme/theme1.xml']])) },
+      { name: 'ppt/theme/theme1.xml', data: enc.encode(themeXml) },
+    ]);
+  }
+
+  /* ---------- PPT 布局引擎（导轨/母线版，单位英寸） ----------
+   * 根卡居中；第 2 层横排，经共用水平母线连到根；第 3 层起在父卡下竖直堆叠，
+   * 由父卡内隐形锚点引出左侧导轨；第 2 层子节点 > 6 时分两列、每列一条导轨。 */
+  function _estTextW(text, sizePt) {
+    let w = 0;
+    for (const ch of String(text || '')) w += ch.charCodeAt(0) > 255 ? 1 : 0.6;
+    return w * (sizePt / 72);
+  }
+
+  function buildPptLayout(org, opts) {
+    opts = opts || {};
+    const SLIDE_W = 13.333, SLIDE_H = 7.5;
+    if (!org) return { width: SLIDE_W, height: SLIDE_H, bg: _PPT_BG, shapes: [] };
+    const shapes = [];
+    let idSeq = 2;
+    const addShape = (s) => { s.__id = idSeq++; shapes.push(s); return s; };
+    const drawConn = (fromSh, toSh, busY) => {
+      const sx = fromSh.x + fromSh.w / 2, sy = fromSh.y + fromSh.h;
+      const ex = toSh.x + toSh.w / 2, ey = toSh.y;
+      const span = ey - sy;
+      const adj2 = span > 0 ? Math.max(0, Math.min(100000, Math.round(((busY - sy) / span) * 100000))) : 40000;
+      addShape({ t: 'conn', kind: 'bus', adj2, x1: sx, y1: sy, x2: ex, y2: ey,
+        stId: fromSh.__id, stIdx: 2, endId: toSh.__id, endIdx: 0, color: _LINE_C, width: 0.75 });
+    };
+    const drawRail = (anchor, toSh) => {
+      const sx = anchor.x + anchor.w / 2, sy = anchor.y + anchor.h;
+      const ex = toSh.x, ey = toSh.y + toSh.h / 2;
+      addShape({ t: 'conn', kind: 'rail', x1: sx, y1: sy, x2: ex, y2: ey,
+        stId: anchor.__id, stIdx: 2, endId: toSh.__id, endIdx: 1, color: _LINE_C, width: 0.75 });
+    };
+    // 隐形锚点：藏在父卡内、底边与父卡底边重合，用于在父卡底边任意 x 处承载连接点
+    const ANCHOR_S = 0.03;
+    const railAnchorAt = (card, relX) => addShape({ t: 'rect', x: card.x + relX - ANCHOR_S / 2,
+      y: card.y + card.h - ANCHOR_S, w: ANCHOR_S, h: ANCHOR_S, fill: null, line: null, radius: 0 });
+
+    const SZ_NAME = 8, SZ_META = 7;
+    const LINE_H = (pt) => (pt / 72) * 1.62;
+    const NAME_H = LINE_H(SZ_NAME), META_H = LINE_H(SZ_META), META_SPC = 1.5 / 72;
+    const PAD_TOP = 0.05, PAD_BOT = 0.04, PAD_X = 0.05;
+    const GAP_X_L2 = 0.26, RAIL_OFF = 0.10, RAIL_GAP = 0.14, GAP_Y = 0.06;
+    const CONN_H_L1_L2 = 0.24, CONN_H_L2_L3 = 0.16, CONN_H_DEEP = 0.12;
+    const TWO_COL_MIN = 6, COL_GAP = 0.34;
+    const ALLOW = 2 * PAD_X + 0.12;
+    const level2 = org.children || [];
+    const deep = [];
+    const collect = (n) => (n.children || []).forEach(k => { deep.push(k); collect(k); });
+    level2.forEach(collect);
+    const maxOf = (arr) => arr.reduce((m, v) => (v > m ? v : m), 0);
+    const textW = (n) => maxOf([_estTextW(n.name, SZ_NAME), ...(n.metas || []).map(m => _estTextW(m, SZ_META))]);
+    // 卡宽自适应：深层卡统一宽度，第 2 层与根不窄于深层
+    const L3_W = Math.max(1.16, Math.min(1.80, maxOf(deep.map(textW)) + ALLOW));
+    const L2_W = Math.max(L3_W, Math.min(2.6, maxOf(level2.map(textW)) + ALLOW));
+    const L1_W = Math.max(L2_W, Math.min(3.2, textW(org) + ALLOW));
+
+    // 所有卡片统一高度：按最多的名称行数 + 字段行数计算
+    const wrapLines = (text, size, cardW) => Math.max(1, Math.ceil(_estTextW(text, size) * 1.06 / ((cardW - 2 * PAD_X) * 0.92)));
+    let maxNameLines = 1, maxMetaLines = 0;
+    const consider = (n, w) => {
+      maxNameLines = Math.max(maxNameLines, Math.min(3, wrapLines(n.name, SZ_NAME, w)));
+      maxMetaLines = Math.max(maxMetaLines, (n.metas || []).reduce((a, m) => a + Math.min(2, wrapLines(m, SZ_META, w)), 0));
+    };
+    consider(org, L1_W); level2.forEach(n => consider(n, L2_W)); deep.forEach(n => consider(n, L3_W));
+    const H = PAD_TOP + maxNameLines * NAME_H + maxMetaLines * (META_H + META_SPC) + PAD_BOT + 0.04;
+    const GAP_L1_L2 = Math.max(CONN_H_L1_L2, H * 1.0);
+    const GAP_L2_L3 = Math.max(CONN_H_L2_L3, H * 0.5);
+
+    // 子节点列布局：allowTwo 时子节点 > TWO_COL_MIN 分两列，每列一条导轨
+    const subWMemo = new Map(), descMemo = new Map();
+    const kidsLayout = (kids, allowTwo) => {
+      const half = Math.ceil(kids.length / 2);
+      const cols = allowTwo && kids.length > TWO_COL_MIN ? [kids.slice(0, half), kids.slice(half)] : (kids.length ? [kids] : []);
+      let cursor = RAIL_OFF + RAIL_GAP;
+      const info = cols.map(col => {
+        const extent = maxOf(col.map(subW));
+        const childX = cursor, railX = childX - RAIL_GAP;
+        cursor = childX + extent + COL_GAP;
+        return { col, childX, railX, extent };
+      });
+      const contentW = info.length ? info[info.length - 1].childX + info[info.length - 1].extent : 0;
+      return { info, contentW };
+    };
+    function subW(node) {
+      if (subWMemo.has(node)) return subWMemo.get(node);
+      const kids = node.children || [];
+      const w = kids.length ? Math.max(L3_W, kidsLayout(kids, false).contentW) : L3_W;
+      subWMemo.set(node, w);
+      return w;
+    }
+    const colStackH = (col) => col.reduce((acc, k, i) => acc + (i > 0 ? GAP_Y : 0) + H + descH(k), 0);
+    function descH(node) {
+      if (descMemo.has(node)) return descMemo.get(node);
+      const kids = node.children || [];
+      const h = kids.length ? CONN_H_DEEP + maxOf(kidsLayout(kids, false).info.map(c => colStackH(c.col))) : 0;
+      descMemo.set(node, h);
+      return h;
+    }
+    const l2Layout = (n) => {
+      const L = kidsLayout(n.children || [], true);
+      return { info: L.info, width: Math.max(L2_W, L.contentW + 0.02) };
+    };
+    const l2Info = level2.map(l2Layout);
+    const rowW = l2Info.reduce((s, L, i) => s + L.width + (i < l2Info.length - 1 ? GAP_X_L2 : 0), 0);
+    const MARGIN_X = 0.25, MARGIN_TOP = 0.42, MARGIN_BOT = 0.22;
+    const contentW = Math.max(rowW, L1_W);
+    const SW = contentW + 2 * MARGIN_X;
+    const Y1 = MARGIN_TOP, Y2 = Y1 + H + GAP_L1_L2, Y3 = Y2 + H + GAP_L2_L3;
+    const l2ColH = l2Info.map(L => maxOf(L.info.map(c => GAP_L2_L3 + colStackH(c.col))));
+    const SH = (level2.length ? Y2 + H + maxOf(l2ColH) : Y1 + H) + MARGIN_BOT;
+    // 卡片：主字段（名称）+ 其余展示字段，单形状内嵌多段文字
+    const drawCard = (x, y, w, node, kind) => {
+      const isRoot = kind === 'root', isL2 = kind === 'l2';
+      return addShape({
+        t: 'rect', x, y, w, h: H, radius: 0.04,
+        fill: isRoot ? _ROOT_FILL : (isL2 ? _L2_FILL : 'FFFFFF'),
+        line: { color: isRoot ? _ROOT_BORDER : (isL2 ? _L2_BORDER : _CARD_BORDER), width: isRoot ? 1.5 : 0.75, dash: !!node.virtual },
+        vAnchor: 'ctr',
+        paras: [
+          { text: node.name, size: SZ_NAME, bold: isRoot || isL2, color: _NAME_COLOR },
+          ...(node.metas || []).map(m => ({ text: m, size: SZ_META, spcBef: 1.5, color: _META_COLOR })),
+        ],
+      });
+    };
+    const drawStack = (parentCard, node, topY, allowTwo, cols) => {
+      const SL = cols || kidsLayout(node.children || [], allowTwo);
+      const anchors = SL.info.map(c => railAnchorAt(parentCard, c.railX));
+      let bottom = topY;
+      SL.info.forEach((c, ci) => {
+        let y = topY;
+        c.col.forEach((k, i) => {
+          if (i > 0) y += GAP_Y;
+          const kCard = drawCard(parentCard.x + c.childX, y, L3_W, k, 'deep');
+          drawRail(anchors[ci], kCard);
+          y += H;
+          if ((k.children || []).length) y = drawStack(kCard, k, y + CONN_H_DEEP, false);
+        });
+        bottom = Math.max(bottom, y);
+      });
+      return bottom;
+    };
+    const rootCard = drawCard(MARGIN_X + (contentW - L1_W) / 2, Y1, L1_W, org, 'root');
+    const busY = Y1 + H + GAP_L1_L2 * 0.5;   // 根 → 第 2 层共用水平母线，位于层间距正中
+    let colX = MARGIN_X + (contentW - rowW) / 2;
+    level2.forEach((n, i) => {
+      const L = l2Info[i];
+      const card = drawCard(colX, Y2, L.width, n, 'l2');
+      drawConn(rootCard, card, busY);
+      if (L.info.length) drawStack(card, n, Y3, true, L);
+      colX += L.width + GAP_X_L2;
+    });
+
+    // 标题（可选）放在顶部留白处
+    if (opts.title) {
+      addShape({ t: 'text', x: 0, y: 0.05, w: SW, h: 0.3, lines: [opts.title], size: 12, bold: true,
+        color: _TITLE_COLOR, align: 'ctr', valign: 'ctr', noScale: true });
+    }
+
+    // 16:9 自适应：宽度优先占满，高度约 2/3 页高，字号上限 10pt；x/y 各自独立缩放
+    const kx = (SLIDE_W * 0.98) / SW, ky = (SLIDE_H * (2 / 3)) / SH;
+    const sx = kx, sy = Math.min(kx, ky, 10 / SZ_NAME);
+    const fs = Math.min(sx, sy);
+    const x0 = (SLIDE_W - SW * sx) / 2, y0 = (SLIDE_H - SH * sy) / 2;
+    for (const sh of shapes) {
+      if (sh.t === 'conn') {
+        sh.x1 = sh.x1 * sx + x0; sh.y1 = sh.y1 * sy + y0;
+        sh.x2 = sh.x2 * sx + x0; sh.y2 = sh.y2 * sy + y0;
+        sh.width = Math.max(0.25, sh.width * fs);
+        continue;
+      }
+      if (sh.noScale) { sh.x = 0; sh.w = SLIDE_W; sh.y = Math.max(0.05, y0 - 0.45); sh.h = 0.36; continue; }
+      sh.x = sh.x * sx + x0; sh.y = sh.y * sy + y0; sh.w *= sx; sh.h *= sy;
+      if (sh.radius) sh.radius *= fs;
+      if (sh.line && sh.line.width) sh.line.width = Math.max(0.25, sh.line.width * fs);
+      if (sh.paras) {
+        sh.lIns = Math.round(27432 * sx); sh.rIns = Math.round(27432 * sx);
+        sh.tIns = Math.round(18288 * sy); sh.bIns = Math.round(18288 * sy);
+        sh.paras = sh.paras.map(p => ({ ...p,
+          size: p.size ? Math.max(1, +(p.size * fs).toFixed(2)) : undefined,
+          spcBef: p.spcBef ? +(p.spcBef * sy).toFixed(2) : undefined }));
+      }
+    }
+    return { width: SLIDE_W, height: SLIDE_H, bg: _PPT_BG, shapes, scale: fs };
+  }
+  /* ---------- 表格归一化 ---------- */
+  const cellStr = (v) => (v === null || v === undefined) ? '' : String(v).replace(/\u00a0/g, ' ').trim();
+
+  // aoa：二维数组，第 0 行为表头 → { headers, rows: Array<Object> }
+  function normalizeTable(aoa) {
+    const src = Array.isArray(aoa) ? aoa : [];
+    let start = 0;
+    while (start < src.length && !(src[start] || []).some(c => cellStr(c) !== '')) start++;
+    const rawHeaders = (src[start] || []).map(cellStr);
+    const width = Math.max(rawHeaders.length, ...src.slice(start + 1).map(r => (r || []).length), 0);
+    const seen = new Map();
+    const headers = [];
+    for (let i = 0; i < width; i++) {
+      let h = rawHeaders[i] || `列${i + 1}`;
+      if (seen.has(h)) { const n = seen.get(h) + 1; seen.set(h, n); h = `${h}_${n}`; } else seen.set(h, 1);
+      headers.push(h);
+    }
+    const rows = [];
+    for (const r of src.slice(start + 1)) {
+      const arr = r || [];
+      if (!arr.some(c => cellStr(c) !== '')) continue;
+      const o = {};
+      headers.forEach((h, i) => { o[h] = cellStr(arr[i]); });
+      rows.push(o);
+    }
+    ensureRowIds(rows);
+    return { headers, rows };
+  }
+
+  /* ---------- 字段自动识别 ---------- */
+  const RX = {
+    primary: [/^(姓名|名字|员工姓名|人员姓名|名称|节点名称|组织名称|部门名称|name|full\s*name|employee\s*name)$/i, /(姓名|名称|name)/i],
+    parent: [/^(主管|上级|直属上级|直属主管|直接上级|汇报对象|汇报人|上级领导|直属领导|上级部门|父节点|父级|manager|parent|leader|reports?\s*to|supervisor)$/i,
+      /(主管|上级|汇报|领导|经理|manager|parent|supervisor|reports?\s*to|父)/i],
+    level: [/^(层级|职级|级别|职位级别|level|grade|职位|岗位|title)$/i, /(层级|职级|级别|level|grade|职位|岗位)/i],
+    dept: [/^(部门|所属部门|团队|所属团队|组织|所属组织|department|dept|team)$/i, /(部门|团队|组织|department|dept|team)/i],
+  };
+  const pick = (headers, rxs, exclude) => {
+    for (const rx of rxs) {
+      const h = headers.find(x => !exclude.includes(x) && rx.test(x));
+      if (h) return h;
+    }
+    return '';
+  };
+  // 在除上级列外的所有列中，找能命中最多上级值的列作为节点标识列（优先主字段）
+  function detectIdField(headers, rows, primary, parent) {
+    if (!parent) return primary;
+    const vals = rows.map(r => r[parent]).filter(v => v && !isRootValue(v));
+    if (!vals.length) return primary;
+    let best = primary, bestScore = -1;
+    for (const h of [primary, ...headers.filter(x => x !== primary)]) {
+      if (!h || h === parent) continue;
+      const set = new Set(rows.map(r => r[h]).filter(Boolean));
+      const score = vals.filter(v => set.has(v)).length;
+      if (score > bestScore) { best = h; bestScore = score; }
+    }
+    return best;
+  }
+  function autoMap(headers, rows) {
+    const primary = pick(headers, RX.primary, []) || headers[0] || '';
+    const parent = pick(headers, RX.parent, [primary]);
+    const id = detectIdField(headers, rows || [], primary, parent);
+    const used = [primary, parent, id];
+    const level = pick(headers, RX.level, used);
+    const dept = pick(headers, RX.dept, used.concat(level));
+    return { primary, id, parent, level, dept };
+  }
+  // 默认展示字段：除主字段/上级/标识列外的前 3 列（层级、部门优先）
+  function defaultVisibleFields(headers, map) {
+    const skip = new Set([map.primary, map.parent, map.id].filter(Boolean));
+    const pref = [map.level, map.dept].filter(h => h && !skip.has(h));
+    const rest = headers.filter(h => !skip.has(h) && !pref.includes(h));
+    return pref.concat(rest).slice(0, 3);
+  }
+  /* ---------- 构树（扁平父子模式：上级字段指向上一节点） ---------- */
+  const ROOT_VALUES = new Set(['', '0', 'null', 'none', 'nil', 'n/a', '-', '--', '无', '空']);
+  function isRootValue(v) { return ROOT_VALUES.has(String(v || '').trim().toLowerCase()); }
+  const VIRTUAL_ROOT_ID = '__VIRTUAL_ROOT__';
+
+  /**
+   * rows: Array<Object>；map: { primary, id, parent }
+   * 返回 { root, total, warnings: { orphans, cycles, duplicates, selfRefs } }
+   * 节点：{ id, key, name, row, parentId, children, virtual? }
+   */
+  function buildTree(rows, map, opts) {
+    opts = opts || {};
+    const primary = map.primary, idField = map.id || map.primary, parentField = map.parent;
+    const nodes = new Map();
+    const keyToId = new Map();
+    const warnings = { orphans: [], cycles: [], duplicates: [], selfRefs: [] };
+    rows.forEach((row, i) => {
+      const name = cellStr(row[primary]);
+      const key = cellStr(row[idField]) || name;
+      if (!name && !key) return;
+      let id = row.__rid || ('n' + i);
+      if (key && keyToId.has(key)) warnings.duplicates.push(key);
+      else if (key) keyToId.set(key, id);
+      nodes.set(id, { id, key, name: name || key, row, parentId: null, children: [], __idx: i });
+    });
+    // 解析上级
+    nodes.forEach(n => {
+      const pv = parentField ? cellStr(n.row[parentField]) : '';
+      if (isRootValue(pv)) return;
+      const pid = keyToId.get(pv);
+      if (!pid) { warnings.orphans.push(n.name); return; }
+      if (pid === n.id) { warnings.selfRefs.push(n.name); return; }
+      n.parentId = pid;
+    });
+    // 环检测：沿 parent 链上溯，遇到本轮已访问节点即成环，断开该处
+    const state = new Map(); // 1=访问中 2=完成
+    nodes.forEach(start => {
+      if (state.get(start.id) === 2) return;
+      const path = [];
+      let cur = start;
+      while (cur && !state.has(cur.id)) { state.set(cur.id, 1); path.push(cur); cur = cur.parentId ? nodes.get(cur.parentId) : null; }
+      if (cur && state.get(cur.id) === 1) {
+        warnings.cycles.push(cur.name);
+        cur.parentId = null;     // 把环上的入口节点提升为根
+      }
+      path.forEach(p => state.set(p.id, 2));
+    });
+    const roots = [];
+    nodes.forEach(n => {
+      if (n.parentId) nodes.get(n.parentId).children.push(n); else roots.push(n);
+    });
+    let root;
+    if (roots.length === 1) root = roots[0];
+    else {
+      root = { id: VIRTUAL_ROOT_ID, key: VIRTUAL_ROOT_ID, name: opts.rootName || '全部', row: {}, parentId: null, children: roots, virtual: true };
+      roots.forEach(r => { r.parentId = VIRTUAL_ROOT_ID; });
+    }
+    return { root, total: nodes.size, warnings };
+  }
+
+  /* ---------- 树工具 ---------- */
+  /* ---------- 编辑模式纯函数 ---------- */
+  let _ridSeq = 0;
+  function genRowId() { _ridSeq += 1; return 'r' + Date.now().toString(36) + '_' + _ridSeq; }
+  // 为每行补一个稳定内部 id（__rid），不进表头/显示/导出；幂等
+  function ensureRowIds(rows) {
+    (rows || []).forEach(r => { if (r && !r.__rid) r.__rid = genRowId(); });
+    return rows;
+  }
+  // 在现有标识值之外生成一个唯一 key（用于新节点的标识列）
+  function genNodeKey(rows, idField) {
+    const used = new Set((rows || []).map(r => cellStr(r[idField])).filter(Boolean));
+    let k;
+    do { _ridSeq += 1; k = 'N-' + Date.now().toString(36) + '-' + _ridSeq; } while (used.has(k));
+    return k;
+  }
+  // 收集子树（含自身）所有节点的行 __rid
+  function subtreeRids(node) {
+    const ids = [];
+    walk(node, n => { if (n.row && n.row.__rid) ids.push(n.row.__rid); });
+    return ids;
+  }
+  // 能否把 childNode 挂到 newParentNode 下：禁自身/子孙/原父级；返回 { ok, reason }
+  function canReparent(childNode, newParentNode, index) {
+    if (!childNode || !newParentNode) return { ok: false, reason: '目标无效' };
+    if (childNode.virtual) return { ok: false, reason: '根节点不能移动' };
+    if (newParentNode.id === childNode.id) return { ok: false, reason: '不能挂到自己' };
+    if (index && index.parentOf.get(childNode.id) === newParentNode.id) return { ok: false, reason: '已经是该节点的下级' };
+    if (index && ancestorsOf(newParentNode.id, index.parentOf).includes(childNode.id)) return { ok: false, reason: '不能挂到自己的下级' };
+    return { ok: true, reason: '' };
+  }
+
+  function walk(node, fn, depth, parent) {
+    depth = depth || 0;
+    if (fn(node, depth, parent) === false) return;
+    (node.children || []).forEach(c => walk(c, fn, depth + 1, node));
+  }
+  function indexTree(root) {
+    const byId = new Map(), parentOf = new Map();
+    let maxDepth = 0;
+    walk(root, (n, d, p) => { byId.set(n.id, n); if (p) parentOf.set(n.id, p.id); if (d > maxDepth) maxDepth = d; });
+    return { byId, parentOf, maxDepth };
+  }
+  function ancestorsOf(id, parentOf) {
+    const out = [];
+    let cur = parentOf.get(id);
+    while (cur) { out.push(cur); cur = parentOf.get(cur); }
+    return out;
+  }
+  function orderChildren(node, sortOrder) {
+    const order = sortOrder && sortOrder[node.id];
+    if (!order || !order.length) return node.children;
+    const rank = new Map(order.map((id, i) => [id, i]));
+    return node.children.slice().sort((a, b) => {
+      const ra = rank.has(a.id) ? rank.get(a.id) : 1e9 + a.__idx;
+      const rb = rank.has(b.id) ? rank.get(b.id) : 1e9 + b.__idx;
+      return ra - rb;
+    });
+  }
+  // 搜索：名称 / 层级 / 部门 包含匹配（不区分大小写）
+  function searchTree(root, query, map) {
+    const q = String(query || '').trim().toLowerCase();
+    const hits = [];
+    if (!q) return hits;
+    walk(root, n => {
+      if (n.virtual) return;
+      const hay = [n.name, map.level ? n.row[map.level] : '', map.dept ? n.row[map.dept] : ''];
+      if (hay.some(v => String(v || '').toLowerCase().includes(q))) hits.push(n.id);
+    });
+    return hits;
+  }
+  // 子节点是否可见：未手动折叠，且未超出最大深度（或被局部展开）
+  function childrenVisible(node, depth, view) {
+    if (!node.children.length || view.collapsed.has(node.id)) return false;
+    const exceed = view.maxDepth != null && depth + 1 > view.maxDepth;
+    return !exceed || view.expanded.has(node.id);
+  }
+  // 按当前视图（深度/折叠/排序）裁剪出导出用的轻量树 { name, metas, virtual, children }
+  function visibleTree(node, view, metasOf, depth) {
+    depth = depth || 0;
+    const kids = childrenVisible(node, depth, view) ? orderChildren(node, view.sortOrder) : [];
+    return {
+      name: node.virtual ? (view.rootName || node.name) : node.name,
+      metas: metasOf(node),
+      virtual: !!node.virtual,
+      children: kids.map(k => visibleTree(k, view, metasOf, depth + 1)),
+    };
+  }
+  function buildPptx(layoutRoot, opts) { return _buildPptxFile(buildPptLayout(layoutRoot, opts)); }
+
+  /* ---------- 聚合统计：对节点下级的指定字段做统计 ---------- */
+  const AGG_OPS = {
+    count:    { name: '下级人数', needField: false },
+    nonEmpty: { name: '非空计数', needField: true, suffix: '非空数' },
+    sum:      { name: '求和', needField: true, numeric: true, suffix: '合计' },
+    avg:      { name: '平均值', needField: true, numeric: true, suffix: '平均' },
+    max:      { name: '最大值', needField: true, numeric: true, suffix: '最高' },
+    min:      { name: '最小值', needField: true, numeric: true, suffix: '最低' },
+    distinct: { name: '去重计数', needField: true, suffix: '种类数', vals: true },
+    dist:     { name: '分布', needField: true, suffix: '分布', vals: true },
+  };
+  const AGG_SCOPES = { desc: '所有下级节点', descSelf: '所有下级节点 + 自身', direct: '仅直接下级节点' };
+  const COUNT_LABELS = { desc: '下级人数', descSelf: '团队人数', direct: '直接下级数' };
+  function parseNum(v) {
+    const s = String(v == null ? '' : v).replace(/[,，\s%]/g, '');
+    if (!s) return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+  const fmtNum = (x, digits) => (Number.isInteger(x) ? String(x) : String(+x.toFixed(digits == null ? 2 : digits)));
+  function aggLabel(a) {
+    if (a.label && String(a.label).trim()) return String(a.label).trim();
+    if (a.op === 'count') return COUNT_LABELS[a.scope] || COUNT_LABELS.desc;
+    return `${a.field || ''}${(AGG_OPS[a.op] || {}).suffix || ''}`;
+  }
+  function validAggs(aggs, headers) {
+    return (aggs || []).filter(a => a && AGG_OPS[a.op] && AGG_SCOPES[a.scope || 'desc'] !== undefined &&
+      (!AGG_OPS[a.op].needField || (a.field && (!headers || headers.includes(a.field)))));
+  }
+  // 某列可解析为数值的比例：{ ok, total }（total 为非空单元格数）
+  function numericRatio(rows, field) {
+    let ok = 0, total = 0;
+    for (const r of rows) { const v = r[field]; if (v === undefined || v === null || String(v).trim() === '') continue; total++; if (parseNum(v) !== null) ok++; }
+    return { ok, total };
+  }
+  /**
+   * 后序遍历一次，按范围合并累加器 { n, sum, max, min, vals }；仅 distinct/dist 维护 vals。
+   * 返回 Map<nodeId, Array<{ label, text }>>；范围内没有参与统计的节点时不输出该行。
+   */
+  function computeAggregates(root, aggregates) {
+    const out = new Map();
+    const list = validAggs(aggregates).map(a => ({ ...a, scope: a.scope || 'desc', label: aggLabel({ ...a, scope: a.scope || 'desc' }) }));
+    if (!root || !list.length) return out;
+    const newAcc = (a) => ({ n: 0, sum: 0, max: -Infinity, min: Infinity, vals: AGG_OPS[a.op].vals ? new Map() : null });
+    const addSelf = (acc, a, node) => {
+      if (node.virtual) return;
+      if (a.op === 'count') { acc.n++; return; }
+      const raw = node.row[a.field];
+      const s = raw === undefined || raw === null ? '' : String(raw).trim();
+      if (!s) return;
+      if (AGG_OPS[a.op].numeric) {
+        const v = parseNum(s);
+        if (v === null) return;
+        acc.n++; acc.sum += v;
+        if (v > acc.max) acc.max = v;
+        if (v < acc.min) acc.min = v;
+        return;
+      }
+      acc.n++;
+      if (acc.vals) acc.vals.set(s, (acc.vals.get(s) || 0) + 1);
+    };
+    const merge = (dst, src) => {
+      dst.n += src.n; dst.sum += src.sum;
+      if (src.max > dst.max) dst.max = src.max;
+      if (src.min < dst.min) dst.min = src.min;
+      if (dst.vals && src.vals) src.vals.forEach((c, k) => dst.vals.set(k, (dst.vals.get(k) || 0) + c));
+    };
+    const text = (a, acc) => {
+      if (!acc.n) return null;
+      switch (a.op) {
+        case 'count': case 'nonEmpty': return String(acc.n);
+        case 'sum': return fmtNum(acc.sum);
+        case 'avg': return fmtNum(acc.sum / acc.n, 1);
+        case 'max': return fmtNum(acc.max);
+        case 'min': return fmtNum(acc.min);
+        case 'distinct': return String(acc.vals.size);
+        case 'dist': {
+          const ent = [...acc.vals.entries()].sort((x, y) => y[1] - x[1] || String(x[0]).localeCompare(String(y[0]), 'zh-CN'));
+          const top = ent.slice(0, 3).map(([k, c]) => `${k}×${c}`);
+          const rest = ent.slice(3).reduce((s, e) => s + e[1], 0);
+          return top.concat(rest ? [`其他×${rest}`] : []).join(' ');
+        }
+        default: return null;
+      }
+    };
+    // 返回每个统计项的"子树累加器（含自身）"
+    const visit = (node) => {
+      const kids = node.children || [];
+      const kidSubs = kids.map(visit);
+      const rows = [];
+      const subs = list.map((a, ai) => {
+        const acc = newAcc(a);
+        kidSubs.forEach(ks => merge(acc, ks[ai]));          // 此时 acc = 所有下级节点
+        const self = newAcc(a); addSelf(self, a, node);
+        let t;
+        if (a.scope === 'direct') { const d = newAcc(a); kids.forEach(k => addSelf(d, a, k)); t = text(a, d); }
+        else if (a.scope === 'descSelf') { merge(acc, self); t = text(a, acc); }
+        else t = text(a, acc);
+        if (a.scope !== 'descSelf') merge(acc, self);
+        if (t !== null) rows.push({ label: a.label, text: t });
+        return acc;
+      });
+      if (rows.length) out.set(node.id, rows);
+      return subs;
+    };
+    visit(root);
+    return out;
+  }
+
+  /* ---------- 内置示例数据 ---------- */
+  const SAMPLE_AOA = [
+    '姓名|主管|职级|部门|岗位|工号',
+    '王总||M6|总经办|CEO|A001', '李明|王总|M5|研发中心|研发副总裁|A002', '周芳|王总|M5|产品中心|产品副总裁|A003',
+    '陈刚|王总|M5|销售中心|销售副总裁|A004', '赵敏|王总|M5|职能中心|HR副总裁|A005',
+    '孙浩|李明|M4|前端部|前端负责人|A010', '吴磊|李明|M4|后端部|后端负责人|A011', '郑爽|李明|M4|测试部|测试负责人|A012', '冯涛|李明|P8|架构组|首席架构师|A013',
+    '何静|孙浩|P6|前端部|高级工程师|A020', '吕洋|孙浩|P5|前端部|工程师|A021', '施琪|孙浩|P5|前端部|工程师|A022',
+    '张伟|吴磊|P7|后端部|技术经理|A023', '许杰|吴磊|P6|后端部|高级工程师|A024', '韩梅|吴磊|P6|后端部|高级工程师|A025',
+    '曹宇|张伟|P5|后端部|工程师|A030', '严宁|张伟|P4|后端部|工程师|A031', '鲁达|郑爽|P6|测试部|测试专家|A032',
+    '金晨|周芳|P7|产品中心|产品总监|A040', '魏然|周芳|P6|设计部|设计负责人|A041', '陶然|金晨|P5|产品中心|产品经理|A042', '姜楠|金晨|P5|产品中心|产品经理|A043',
+    '戚彬|陈刚|M3|华北大区|大区经理|A050', '谢婷|陈刚|M3|华东大区|大区经理|A051', '邹凯|陈刚|M3|华南大区|大区经理|A052',
+    '喻洁|陈刚|M3|西南大区|大区经理|A053', '柏松|陈刚|M3|西北大区|大区经理|A054', '水莹|陈刚|M3|华中大区|大区经理|A055',
+    '窦明|陈刚|M3|东北大区|大区经理|A056', '章程|陈刚|M3|海外事业部|总经理|A057', '云飞|陈刚|M3|渠道部|渠道经理|A058',
+    '苏晓|谢婷|P5|华东大区|客户经理|A060', '潘越|谢婷|P5|华东大区|客户经理|A061',
+    '葛薇|赵敏|P6|人力资源部|HRBP|A070', '奚亮|赵敏|P6|财务部|财务经理|A071', '范冰|赵敏|P5|行政部|行政主管|A072',
+  ].map(line => line.split('|'));
+
+  // 导入模板示例：表头 + 填写说明 + 3 层示例（王总 → 李明/周芳 → 孙浩）
+  const TEMPLATE_SAMPLE = [
+    '王总||M6|总经办|CEO|A001',
+    '李明|王总|M5|研发中心|研发副总裁|A002',
+    '周芳|王总|M5|产品中心|产品副总裁|A003',
+    '孙浩|李明|M4|前端部|前端负责人|A010',
+  ].map(line => line.split('|'));
+  const TEMPLATE_AOA = (() => {
+    const head = SAMPLE_AOA[0];
+    const guides = ['姓名（必填）', '主管（上级，顶层留空）', '职级（可选）', '部门（可选）', '岗位（可选）', '工号（上级填工号时必填）'];
+    return [head, guides, ...TEMPLATE_SAMPLE];
+  })();
+  const generateTemplate = (XLSX) => {
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(TEMPLATE_AOA);
+    ws['!cols'] = TEMPLATE_AOA[0].map((h, i) => ({ wch: Math.max(10, h.length * 2 + 2, ...TEMPLATE_AOA.slice(1).map(r => String(r[i] || '').length + 2)) }));
+    XLSX.utils.book_append_sheet(wb, ws, '人员');
+    XLSX.writeFile(wb, '架构树导入模板.xlsx');
+  };
+
+  return {
+    MIME_PPTX, VIRTUAL_ROOT_ID, SAMPLE_AOA, generateTemplate,
+    normalizeTable, autoMap, defaultVisibleFields, buildTree, isRootValue,
+    walk, indexTree, ancestorsOf, orderChildren, searchTree, childrenVisible, visibleTree,
+    buildPptLayout, buildPptx, _zipStore, _crc32, _escXml,
+    AGG_OPS, AGG_SCOPES, aggLabel, validAggs, numericRatio, computeAggregates, parseNum,
+    ensureRowIds, genRowId, genNodeKey, subtreeRids, canReparent, cellStr,
+  };
+})();
+if (typeof module !== 'undefined' && module.exports) module.exports = OrgCore;
+</script>
+<!-- 应用层（JSX），由页面内 Babel 编译执行；不要在此块中写出 script 结束标签 -->
+<script type="text/plain" id="app-src">
+const { useState, useEffect, useMemo, useRef, useCallback, useLayoutEffect } = React;
+const C = OrgCore;
+const DEFAULT_DEPTH = 2;                 // 默认展示层级
+const SORT_THRESHOLD = 7;                // 子节点数 > 7 显示排序按钮
+const LAYOUT_THRESHOLD = 1;              // 子节点数 > 1 显示布局切换按钮
+const TWO_COL_THRESHOLD = 6;             // 纵向收纳框子节点 > 6 分两列
+const DEPTH_OPTIONS = [1, 2, 3, 4, 5, 6];
+const EMPTY_MAP = { primary: '', id: '', parent: '', level: '', dept: '' };
+
+const ICONS = {
+  upload: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
+  download: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3',
+  search: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35',
+  x: 'M18 6 6 18M6 6l12 12',
+  sliders: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
+  eye: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  back: 'M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11',
+  home: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 22V12h6v10',
+  maximize: 'M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3',
+  minimize: 'M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3',
+  ppt: 'M2 3h20M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3M7 21l5-5 5 5',
+  image: 'M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 21',
+  moveV: 'M12 2v20M8 18l4 4 4-4M8 6l4-4 4 4',
+  moveH: 'M2 12h20M18 8l4 4-4 4M6 8l-4 4 4 4',
+  sort: 'M10 6h11M10 12h11M10 18h11M4 6h1v4M4 10h2M6 18H4c0-1 2-2 2-3s-1-1.5-2-1',
+  grip: 'M9 5h.01M9 12h.01M9 19h.01M15 5h.01M15 12h.01M15 19h.01',
+  sheet: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h8M10 9H8',
+  layers: 'M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
+  alert: 'M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z',
+  edit: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z',
+  plus: 'M12 5v14M5 12h14',
+  trash: 'M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6',
+};
+function Icon({ name, size }) {
+  return (
+    <svg className="icon" style={size ? { width: size, height: size } : undefined} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth={name === 'grip' ? 3 : 2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={ICONS[name]} />
+    </svg>
+  );
+}
+
+// 按需加载第三方库（Excel 解析 / PNG 导出），首屏不阻塞
+async function ensureLib(name) {
+  if (name === 'xlsx' && window.XLSX) return window.XLSX;
+  if (name === 'html2canvas' && window.html2canvas) return window.html2canvas;
+  await window.__loadScript(window.__LIBS__[name]);
+  return name === 'xlsx' ? window.XLSX : window.html2canvas;
+}
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+const safeFileName = (s) => String(s || '架构树').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 80);
+// 本地版本存储（localStorage）
+const VERSIONS_KEY = 'orgtree:versions';
+function loadVersions() {
+  try { const raw = localStorage.getItem(VERSIONS_KEY); const arr = raw ? JSON.parse(raw) : []; return Array.isArray(arr) ? arr : []; }
+  catch (_) { return []; }
+}
+function saveVersions(list) {
+  try { localStorage.setItem(VERSIONS_KEY, JSON.stringify(list)); return { ok: true }; }
+  catch (e) { return { ok: false, error: e }; }
+}
+function Highlight({ text, query }) {
+  const s = String(text == null ? '' : text);
+  const q = String(query || '').trim();
+  if (!q) return s;
+  const i = s.toLowerCase().indexOf(q.toLowerCase());
+  if (i < 0) return s;
+  return <>{s.slice(0, i)}<mark>{s.slice(i, i + q.length)}</mark>{s.slice(i + q.length)}</>;
+}
+
+const TreeCtx = React.createContext(null);
+
+function NodeCard({ node, depth, isRoot, hasChildren, hiddenCount, isCollapsed, layoutMode, isInCompactLane }) {
+  const ctx = React.useContext(TreeCtx);
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const isMatch = ctx.matchSet.has(node.id);
+  const isCurrent = ctx.currentHit === node.id;
+  const isDimmed = ctx.matchSet.size > 0 && !ctx.pathSet.has(node.id);
+  const childCount = node.children.length;
+  const showToggle = !ctx.editMode && ctx.display.showLayoutToggle && hasChildren && !isInCompactLane && childCount > LAYOUT_THRESHOLD;
+  const showSort = !ctx.editMode && ctx.display.showButtons && hasChildren && childCount > SORT_THRESHOLD;
+  const folded = hasChildren && (hiddenCount > 0 || isCollapsed);
+
+  const handleClick = (e) => {
+    e.stopPropagation();
+    if (ctx.editMode && ctx.edit.didDrag()) return;    // 刚发生过拖拽，忽略本次点击
+    if (e.detail >= 2) { clearTimeout(timer.current); return; }
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => ctx.onSingle(node, depth, hiddenCount > 0), 220);
+  };
+  const handleDouble = (e) => { e.stopPropagation(); clearTimeout(timer.current); if (!ctx.editMode) ctx.onDouble(node); };
+  const handleKey = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); ctx.onSingle(node, depth, hiddenCount > 0); }
+    else if (e.key === ' ' ) { e.preventDefault(); ctx.onDouble(node); }
+  };
+  const fields = node.virtual ? [] : ctx.display.visibleFields
+    .map(f => [f, node.row[f]]).filter(([, v]) => v !== undefined && v !== null && String(v) !== '');
+  const edit = ctx.edit;
+  const editMode = ctx.editMode;
+  const dropState = editMode && edit.dropTargetId === node.id ? (edit.dropOk ? 'ok' : 'bad') : '';
+  const cls = ['node-card', isRoot && 'is-root', node.virtual && 'is-virtual', folded && 'has-collapsed-children',
+    isMatch && 'is-match', isCurrent && 'is-current', isDimmed && 'is-dimmed',
+    edit && edit.dragId === node.id && 'is-drag', dropState === 'ok' && 'drop-ok', dropState === 'bad' && 'drop-bad'].filter(Boolean).join(' ');
+  const searchable = new Set([ctx.map.level, ctx.map.dept].filter(Boolean));
+  const aggRows = ctx.display.showAggregates ? (ctx.aggMap.get(node.id) || []) : [];
+
+  // 编辑模式：指针式拖拽变更上级（按住卡片移动）
+  const onPointerDown = (e) => {
+    if (!editMode || node.virtual || e.button !== 0) return;
+    if (e.target.closest && e.target.closest('.edit-act')) return;   // 操作按钮不触发拖拽
+    e.stopPropagation();                                             // 阻止画布平移
+    edit.startDrag(node, e.clientX, e.clientY);
+  };
+
+  return (
+    <div className={cls} data-id={node.id} data-node-card="1" tabIndex={0} role="treeitem"
+      aria-expanded={hasChildren ? !folded : undefined}
+      onPointerDown={editMode && !node.virtual ? onPointerDown : undefined}
+      title={editMode ? (node.virtual ? '根节点：可新建顶层子节点' : '按住拖到其他卡片上变更上级；右上角按钮可新建/编辑/删除') : (hasChildren ? '单击展开/折叠，双击以此为根聚焦' : '双击以此为根聚焦')}
+      onClick={handleClick} onDoubleClick={handleDouble} onKeyDown={handleKey}>
+      {editMode && (
+        <div className="edit-acts">
+          <button type="button" className="edit-act add" title="新建子节点" onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); edit.onAdd(node); }}><Icon name="plus" /></button>
+          {!node.virtual && <button type="button" className="edit-act edit" title="编辑节点信息" onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); edit.onEdit(node); }}><Icon name="edit" /></button>}
+          {!node.virtual && <button type="button" className="edit-act del" title="删除节点" onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); edit.onDelete(node); }}><Icon name="trash" /></button>}
+        </div>
+      )}
+      <div className="node-name"><Highlight text={node.virtual ? ctx.rootName : node.name} query={ctx.query} /></div>
+      {fields.map(([f, v]) => (
+        <div className="node-field" key={f} title={`${f}：${v}`}>
+          {ctx.display.showLabels && <span className="lbl">{f}：</span>}
+          {searchable.has(f) ? <Highlight text={v} query={ctx.query} /> : v}
+        </div>
+      ))}
+      {aggRows.map((r, i) => (
+        <div className="node-agg" key={'agg' + i} title={`${r.label}：${r.text}`}><span className="lbl">{r.label}</span>{r.text}</div>
+      ))}
+      {folded && (
+        <div className="collapse-bar">
+          <Icon name="layers" size={11} />{hiddenCount > 0 ? `${hiddenCount} 个下级（单击展开）` : `已折叠 ${childCount} 个下级`}
+        </div>
+      )}
+      {showToggle && (
+        <button type="button" className="card-btn" style={{ top: -9 }}
+          title={layoutMode === 'horizontal' ? '切换为纵向排列' : '切换为横向排列'}
+          onClick={(e) => { e.stopPropagation(); ctx.onToggleLayout(node.id, layoutMode); }}
+          onDoubleClick={(e) => e.stopPropagation()}>
+          <Icon name={layoutMode === 'horizontal' ? 'moveV' : 'moveH'} />
+        </button>
+      )}
+      {showSort && (
+        <button type="button" className="card-btn" style={{ top: showToggle ? 15 : -9 }} title="调整子节点顺序"
+          onClick={(e) => { e.stopPropagation(); ctx.onOpenSort(node.id); }}
+          onDoubleClick={(e) => e.stopPropagation()}>
+          <Icon name="sort" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function TreeBranch({ node, depth, isRoot, isInCompactLane }) {
+  const ctx = React.useContext(TreeCtx);
+  const hasChildren = node.children.length > 0;
+  const isCollapsed = ctx.view.collapsed.has(node.id);
+  const exceed = ctx.view.maxDepth != null && depth + 1 > ctx.view.maxDepth;
+  const manually = ctx.view.expanded.has(node.id);
+  const showChildren = hasChildren && !isCollapsed && (!exceed || manually);
+  const hiddenCount = exceed && hasChildren && !manually && !isCollapsed ? node.children.length : 0;
+  let isVertical = isInCompactLane || depth >= 1;          // 第 2 层起默认纵向收纳
+  if (!isInCompactLane && ctx.layoutOverrides[node.id]) isVertical = ctx.layoutOverrides[node.id] === 'vertical';
+  const layoutMode = isVertical ? 'vertical' : 'horizontal';
+  const kids = showChildren ? C.orderChildren(node, ctx.view.sortOrder) : [];
+  const card = <NodeCard node={node} depth={depth} isRoot={isRoot} hasChildren={hasChildren} hiddenCount={hiddenCount}
+    isCollapsed={isCollapsed} layoutMode={layoutMode} isInCompactLane={isInCompactLane} />;
+  if (isVertical && showChildren) {
+    const twoCols = !isInCompactLane && kids.length > TWO_COL_THRESHOLD;
+    return (
+      <li>
+        {card}
+        <div className={`compact-lane ${twoCols ? 'compact-two-cols' : ''}`} role="group">
+          {kids.map(k => <TreeBranch key={k.id} node={k} depth={depth + 1} isInCompactLane />)}
+        </div>
+      </li>
+    );
+  }
+  return (
+    <li>
+      {card}
+      {showChildren && (
+        <ul role="group">
+          {kids.map(k => <TreeBranch key={k.id} node={k} depth={depth + 1} isInCompactLane={isInCompactLane} />)}
+        </ul>
+      )}
+    </li>
+  );
+}
+function Modal({ title, sub, onClose, children, footer, small }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div className="overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className={`modal ${small ? 'sm' : ''}`} role="dialog" aria-modal="true" aria-label={title}>
+        <div className="modal-head">
+          <h2>{title}</h2>{sub && <span className="sub">{sub}</span>}
+          <button type="button" className="modal-close" onClick={onClose} aria-label="关闭"><Icon name="x" /></button>
+        </div>
+        <div className="modal-body">{children}</div>
+        {footer && <div className="modal-foot">{footer}</div>}
+      </div>
+    </div>
+  );
+}
+
+function mappingError(map, headers) {
+  if (!map.primary) return '请选择主字段';
+  if (!map.parent) return '请选择上级字段（决定上下节点关系）';
+  if (map.primary === map.parent) return '主字段与上级字段不能是同一列';
+  if ((map.id || map.primary) === map.parent) return '节点标识列与上级字段不能是同一列';
+  const missing = Object.values(map).filter(v => v && !headers.includes(v));
+  if (missing.length) return `表中不存在列：${missing.join('、')}`;
+  return '';
+}
+
+// 字段设置中的"聚合统计字段"编辑区
+function AggregateEditor({ table, enabled, onEnabled, aggs, onChange }) {
+  const update = (i, patch) => onChange(aggs.map((a, j) => (j === i ? { ...a, ...patch } : a)));
+  const add = () => onChange(aggs.concat({ op: aggs.length ? 'sum' : 'count', field: '', scope: 'desc', label: '' }));
+  return (
+    <div className="agg-section">
+      <label className="check">
+        <input type="checkbox" checked={enabled} onChange={(e) => { onEnabled(e.target.checked); if (e.target.checked && !aggs.length) add(); }} />
+        启用聚合统计字段<span className="desc">对每个节点的下级节点做统计（如下级人数、HC 合计、职级分布），显示在节点卡片和 PPT 上</span>
+      </label>
+      {enabled && (
+        <div className="agg-list">
+          <div className="agg-head"><span>统计方式</span><span>统计字段</span><span>统计范围</span><span>显示名称</span><span /></div>
+          {aggs.map((a, i) => {
+            const op = C.AGG_OPS[a.op];
+            const ratio = op.numeric && a.field ? C.numericRatio(table.rows, a.field) : null;
+            return (
+              <div className="agg-row" key={i}>
+                <select aria-label="统计方式" value={a.op} onChange={(e) => update(i, { op: e.target.value, field: C.AGG_OPS[e.target.value].needField ? a.field : '' })}>
+                  {Object.entries(C.AGG_OPS).map(([k, o]) => <option key={k} value={k}>{o.name}</option>)}
+                </select>
+                <div>
+                  {op.needField ? (
+                    <select aria-label="统计字段" value={a.field} onChange={(e) => update(i, { field: e.target.value })}>
+                      <option value="">请选择字段</option>
+                      {table.headers.map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                  ) : <span className="agg-hint">按节点计数，无需字段</span>}
+                  {ratio && <span className={`agg-hint ${ratio.ok ? '' : 'warn'}`}>数值 {ratio.ok}/{ratio.total}{ratio.ok ? '' : '（该列无法按数值统计）'}</span>}
+                </div>
+                <select aria-label="统计范围" value={a.scope} onChange={(e) => update(i, { scope: e.target.value })}>
+                  {Object.entries(C.AGG_SCOPES).map(([k, s]) => <option key={k} value={k}>{s}</option>)}
+                </select>
+                <input aria-label="显示名称" value={a.label} placeholder={C.aggLabel({ ...a, label: '' }) || '显示名称'} onChange={(e) => update(i, { label: e.target.value })} />
+                <button type="button" className="agg-del" title="删除此统计" aria-label="删除此统计" onClick={() => onChange(aggs.filter((_, j) => j !== i))}><Icon name="x" size={12} /></button>
+              </div>
+            );
+          })}
+          <button type="button" className="btn ghost agg-add" onClick={add}>＋ 添加统计</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FieldMappingModal({ table, initial, initialAggs, title, onCancel, onConfirm }) {
+  const [map, setMap] = useState(initial);
+  const [name, setName] = useState(title);
+  const [aggs, setAggs] = useState(() => C.validAggs(initialAggs, table.headers).map(a => ({ field: '', scope: 'desc', label: '', ...a })));
+  const [aggOn, setAggOn] = useState(() => aggs.length > 0);
+  const aggErr = aggOn && aggs.some(a => C.AGG_OPS[a.op].needField && !a.field) ? '请为聚合统计选择统计字段' : '';
+  const err = mappingError(map, table.headers) || aggErr;
+  const set = (k) => (e) => setMap(m => ({ ...m, [k]: e.target.value }));
+  const opts = (allowEmpty, emptyLabel) => (
+    <>
+      {allowEmpty && <option value="">{emptyLabel}</option>}
+      {!allowEmpty && <option value="" disabled>请选择</option>}
+      {table.headers.map(h => <option key={h} value={h}>{h}</option>)}
+    </>
+  );
+  const sample = table.rows.slice(0, 6);
+  return (
+    <Modal title="字段设置" sub={`${table.fileName || '数据'} · ${table.rows.length} 行`} onClose={onCancel}
+      footer={<>
+        {err && <span className="err">{err}</span>}
+        <button type="button" className="btn ghost lg" onClick={onCancel}>取消</button>
+        <button type="button" className="btn primary lg" disabled={!!err} onClick={() => onConfirm(map, name, aggOn ? aggs : [])}>生成架构树</button>
+      </>}>
+      <div className="form-grid">
+        <div className="form-item">
+          <label>主字段<span className="req">*</span></label>
+          <select value={map.primary} onChange={set('primary')}>{opts(false)}</select>
+          <div className="desc">节点名称，始终显示在节点上（如 姓名 / 组织名称）。</div>
+        </div>
+        <div className="form-item">
+          <label>上级字段<span className="req">*</span></label>
+          <select value={map.parent} onChange={set('parent')}>{opts(false)}</select>
+          <div className="desc">上下节点关系。例：张三的"主管"是李四，选"主管"后李四即张三的上一节点。</div>
+        </div>
+        <div className="form-item">
+          <label>节点标识列</label>
+          <select value={map.id} onChange={set('id')}>{opts(true, '与主字段相同')}</select>
+          <div className="desc">上级字段里填写的值对应哪一列；上级填的是工号时选"工号"。</div>
+        </div>
+        <div className="form-item">
+          <label>图表标题</label>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="组织架构树" />
+          <div className="desc">用于页面标题、多根时的虚拟根与导出文件名。</div>
+        </div>
+        <div className="form-item">
+          <label>层级字段（搜索用）</label>
+          <select value={map.level} onChange={set('level')}>{opts(true, '不使用')}</select>
+        </div>
+        <div className="form-item">
+          <label>部门字段（搜索用）</label>
+          <select value={map.dept} onChange={set('dept')}>{opts(true, '不使用')}</select>
+        </div>
+      </div>
+      <AggregateEditor table={table} enabled={aggOn} onEnabled={setAggOn} aggs={aggs} onChange={setAggs} />
+      <div className="preview">
+        <h3>数据预览（前 {sample.length} 行）</h3>
+        <div className="preview-scroll">
+          <table>
+            <thead><tr>{table.headers.map(h => (
+              <th key={h} className={h === map.primary ? 'on-primary' : h === map.parent ? 'on-parent' : ''}>{h}</th>
+            ))}</tr></thead>
+            <tbody>{sample.map((r, i) => <tr key={i}>{table.headers.map(h => <td key={h}>{r[h]}</td>)}</tr>)}</tbody>
+          </table>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+function DisplayPanel({ headers, map, display, aggCount, onChange, onClose }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target) && !(e.target.closest && e.target.closest('[data-display-btn]'))) onClose(); };
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); window.removeEventListener('keydown', onKey); };
+  }, [onClose]);
+  const visible = new Set(display.visibleFields);
+  const toggleField = (h) => {
+    const next = new Set(visible);
+    next.has(h) ? next.delete(h) : next.add(h);
+    onChange({ ...display, visibleFields: headers.filter(x => next.has(x)) });
+  };
+  const flag = (k) => onChange({ ...display, [k]: !display[k] });
+  return (
+    <div className="popover" ref={ref} role="dialog" aria-label="显示设置">
+      <h3>节点展示字段</h3>
+      <div className="field-list">
+        <label className="check disabled"><input type="checkbox" checked disabled />{map.primary}<span className="tag">主字段</span></label>
+        {headers.filter(h => h !== map.primary).map(h => (
+          <label className="check" key={h}>
+            <input type="checkbox" checked={visible.has(h)} onChange={() => toggleField(h)} />{h}
+            {h === map.parent && <span className="tag">上级</span>}
+          </label>
+        ))}
+      </div>
+      <label className="check"><input type="checkbox" checked={display.showLabels} onChange={() => flag('showLabels')} />字段值前显示字段名</label>
+      <label className={`check ${aggCount ? '' : 'disabled'}`} title={aggCount ? '' : '在"字段设置"中启用聚合统计后可用'}>
+        <input type="checkbox" checked={display.showAggregates} disabled={!aggCount} onChange={() => flag('showAggregates')} />
+        显示聚合统计{aggCount ? `（${aggCount} 项）` : '（未配置）'}
+      </label>
+      <label className="check"><input type="checkbox" checked={display.showLayoutToggle} onChange={() => flag('showLayoutToggle')} />布局切换按钮（子节点 &gt; 1）</label>
+      <label className="check"><input type="checkbox" checked={display.showButtons} onChange={() => flag('showButtons')} />操作按钮：排序（子节点 &gt; 7）</label>
+      <div className="hint">主字段必须显示；设置实时生效，并同步到 PPT 导出。</div>
+    </div>
+  );
+}
+
+function SortModal({ node, order, onCancel, onConfirm }) {
+  const [list, setList] = useState(() => C.orderChildren(node, { [node.id]: order }).map(c => ({ id: c.id, name: c.name })));
+  const [dragIdx, setDragIdx] = useState(-1);
+  const [overIdx, setOverIdx] = useState(-1);
+  const move = (from, to) => setList(l => {
+    if (to < 0 || to >= l.length || from === to) return l;
+    const next = l.slice(); const [it] = next.splice(from, 1); next.splice(to, 0, it); return next;
+  });
+  return (
+    <Modal small title="调整子节点顺序" sub={`${node.name} · ${list.length} 个下级`} onClose={onCancel}
+      footer={<>
+        <button type="button" className="btn ghost lg" onClick={onCancel}>取消</button>
+        <button type="button" className="btn primary lg" onClick={() => onConfirm(list.map(x => x.id))}>确定</button>
+      </>}>
+      <div className="sort-tools">
+        <button type="button" className="btn ghost" onClick={() => setList(l => l.slice().sort((a, b) => a.name.localeCompare(b.name, 'zh-CN')))}>按名称排序</button>
+        <button type="button" className="btn ghost" onClick={() => setList(node.children.map(c => ({ id: c.id, name: c.name })))}>恢复原始顺序</button>
+      </div>
+      <ul className="sort-list">
+        {list.map((it, i) => (
+          <li key={it.id} draggable
+            className={`sort-item ${dragIdx === i ? 'dragging' : ''} ${overIdx === i && dragIdx !== i ? 'drag-over' : ''}`}
+            onDragStart={(e) => { setDragIdx(i); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(i)); }}
+            onDragOver={(e) => { e.preventDefault(); setOverIdx(i); }}
+            onDrop={(e) => { e.preventDefault(); move(dragIdx, i); setDragIdx(-1); setOverIdx(-1); }}
+            onDragEnd={() => { setDragIdx(-1); setOverIdx(-1); }}>
+            <Icon name="grip" />
+            <span className="idx">{i + 1}</span>
+            <span className="nm" title={it.name}>{it.name}</span>
+            <button type="button" className="mv" disabled={i === 0} onClick={() => move(i, i - 1)} aria-label={`上移 ${it.name}`}>↑</button>
+            <button type="button" className="mv" disabled={i === list.length - 1} onClick={() => move(i, i + 1)} aria-label={`下移 ${it.name}`}>↓</button>
+          </li>
+        ))}
+      </ul>
+    </Modal>
+  );
+}
+
+// 节点信息编辑弹窗：所有列 + 上级下拉（改上级）
+function NodeEditModal({ node, headers, map, parentOptions, isNew, onCancel, onConfirm }) {
+  const [vals, setVals] = useState(() => {
+    const o = {};
+    headers.forEach(h => { o[h] = node.row[h] == null ? '' : String(node.row[h]); });
+    return o;
+  });
+  const [parentKey, setParentKey] = useState(() => {
+    const pv = map.parent ? String(node.row[map.parent] || '').trim() : '';
+    return C.isRootValue(pv) ? '' : pv;
+  });
+  const set = (h) => (e) => setVals(v => ({ ...v, [h]: e.target.value }));
+  const err = !String(vals[map.primary] || '').trim() ? `请填写${map.primary}（节点名称）` : '';
+  const editable = headers.filter(h => h !== map.parent);   // 上级用下拉单独处理
+  return (
+    <Modal small title={isNew ? '新建子节点' : '编辑节点信息'} sub={isNew ? '' : node.name} onCancel={onCancel}
+      footer={<>
+        {err && <span className="err">{err}</span>}
+        <button type="button" className="btn ghost lg" onClick={onCancel}>取消</button>
+        <button type="button" className="btn primary lg" disabled={!!err} onClick={() => onConfirm(vals, parentKey)}>保存</button>
+      </>}>
+      <div className="form-grid">
+        {editable.map(h => (
+          <div className="form-item" key={h}>
+            <label>{h}{h === map.primary && <span className="req">*</span>}</label>
+            <input value={vals[h]} onChange={set(h)} placeholder={h === map.primary ? '节点名称' : ''} />
+          </div>
+        ))}
+        {map.parent && (
+          <div className="form-item">
+            <label>上级节点</label>
+            <select value={parentKey} onChange={(e) => setParentKey(e.target.value)}>
+              <option value="">（无，作为顶层）</option>
+              {parentOptions.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+            </select>
+            <div className="desc">对应"{map.parent}"列；也可直接拖拽卡片变更上级。</div>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+// 删除确认：有下级时让用户选择删除方式
+function DeleteModal({ node, childCount, descCount, onCancel, onConfirm }) {
+  const [mode, setMode] = useState('subtree');   // subtree=连同下级 | promote=下级上移
+  const hasKids = childCount > 0;
+  return (
+    <Modal small title="删除节点" sub={node.name} onCancel={onCancel}
+      footer={<>
+        <button type="button" className="btn ghost lg" onClick={onCancel}>取消</button>
+        <button type="button" className="btn primary lg" style={{ background: 'var(--danger)', borderColor: 'var(--danger)' }}
+          onClick={() => onConfirm(hasKids ? mode : 'subtree')}>删除</button>
+      </>}>
+      {hasKids ? (
+        <div className="del-choice">
+          <div style={{ fontSize: 13 }}>「{node.name}」有 {childCount} 个直接下级（共 {descCount} 个后代），如何处理？</div>
+          <label className="del-opt">
+            <input type="radio" name="delmode" checked={mode === 'subtree'} onChange={() => setMode('subtree')} />
+            <div><div className="t">连同下级一起删除</div><div className="d">删除该节点及其全部 {descCount} 个后代。</div></div>
+          </label>
+          <label className="del-opt">
+            <input type="radio" name="delmode" checked={mode === 'promote'} onChange={() => setMode('promote')} />
+            <div><div className="t">仅删除本节点，下级上移</div><div className="d">{childCount} 个直接下级改挂到「{node.name}」的上级（若本节点为顶层，则下级成为顶层）。</div></div>
+          </label>
+        </div>
+      ) : (
+        <div style={{ fontSize: 13 }}>确定删除「{node.name}」？此操作不可撤销。</div>
+      )}
+    </Modal>
+  );
+}
+
+// 版本管理弹窗（本地 localStorage）
+function VersionModal({ versions, defaultName, onClose, onSave, onRestore, onDelete }) {
+  const [name, setName] = useState(defaultName);
+  const fmt = (ts) => { try { return new Date(ts).toLocaleString('zh-CN'); } catch (_) { return ''; } };
+  return (
+    <Modal small title="版本" sub="保存在本浏览器本地" onClose={onClose}
+      footer={<button type="button" className="btn ghost lg" onClick={onClose}>关闭</button>}>
+      <div className="ver-save">
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="版本名称" />
+        <button type="button" className="btn primary" onClick={() => onSave(name)}>保存当前为版本</button>
+      </div>
+      {versions.length === 0 ? (
+        <div className="ver-empty">还没有保存的版本。编辑后点"保存当前为版本"即可留存，刷新也不丢。</div>
+      ) : (
+        <ul className="ver-list">
+          {versions.map(v => (
+            <li className="ver-item" key={v.id}>
+              <div className="meta">
+                <div className="nm" title={v.name}>{v.name}</div>
+                <div className="sub">{v.title || '—'} · {v.count} 节点 · {fmt(v.savedAt)}</div>
+              </div>
+              <button type="button" className="btn" onClick={() => onRestore(v)}>恢复</button>
+              <button type="button" className="btn ghost" onClick={() => onDelete(v.id)}>删除</button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Modal>
+  );
+}
+
+function resolveDisplay(headers, map, cfg) {
+  cfg = cfg || {};
+  let visibleFields;
+  if (Array.isArray(cfg.visibleFields)) visibleFields = cfg.visibleFields;
+  else if (Array.isArray(cfg.hiddenFields)) {
+    const hide = new Set(cfg.hiddenFields.concat([map.primary]));
+    visibleFields = headers.filter(h => !hide.has(h));
+  } else visibleFields = C.defaultVisibleFields(headers, map);
+  return {
+    visibleFields: headers.filter(h => h !== map.primary && visibleFields.includes(h)),
+    showLabels: !!cfg.showLabels,
+    showLayoutToggle: cfg.showLayoutToggle !== false,
+    showButtons: cfg.showButtons !== false,
+    showAggregates: cfg.showAggregates !== false,
+  };
+}
+const parseDepth = (v) => (v === 'all' || v === null) ? null : (Number(v) > 0 ? Number(v) : DEFAULT_DEPTH);
+
+function App() {
+  const [table, setTable] = useState(null);            // { headers, rows, fileName }
+  const [map, setMap] = useState(EMPTY_MAP);            // 已生效的字段映射
+  const [draft, setDraft] = useState(null);           // 字段设置弹窗：{ table, map, displayCfg }
+  const [title, setTitle] = useState('组织架构树');
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [display, setDisplay] = useState(resolveDisplay([], EMPTY_MAP, {}));
+  const [maxDepth, setMaxDepth] = useState(DEFAULT_DEPTH);
+  const [collapsed, setCollapsed] = useState(() => new Set());
+  const [expanded, setExpanded] = useState(() => new Set());
+  const [layoutOverrides, setLayoutOverrides] = useState({});
+  const [sortOrder, setSortOrder] = useState({});
+  const [aggregates, setAggregates] = useState([]);     // 聚合统计字段配置，空数组 = 未启用
+  const [rootId, setRootId] = useState(null);
+  const [rootHistory, setRootHistory] = useState([]);
+  const [query, setQuery] = useState('');
+  const [hits, setHits] = useState([]);
+  const [hitIdx, setHitIdx] = useState(0);
+  const [showDisplay, setShowDisplay] = useState(false);
+  const [sortNodeId, setSortNodeId] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+  const [dragId, setDragId] = useState(null);           // 正在拖拽的节点 id（状态，用于渲染高亮/顶层区）
+  const dragIdRef = useRef(null);                        // 同步镜像：drag 事件同一回合内可读
+  const setDrag = useCallback((id) => { dragIdRef.current = id; setDragId(id); }, []);
+  const [ghostPos, setGhostPos] = useState(null);       // 拖拽浮层位置 {x,y}
+  const [dropTarget, setDropTarget] = useState({ id: null, ok: false, top: false });
+  const dragRef = useRef(null);                          // { node, startX, startY, moved }
+  const didDragRef = useRef(false);                      // 本次手势是否发生过拖拽（抑制 click）
+  const [editNode, setEditNode] = useState(null);       // { node, isNew } 编辑/新建弹窗
+  const [delNode, setDelNode] = useState(null);         // 删除确认弹窗目标
+  const [versionOpen, setVersionOpen] = useState(false);
+  const [versions, setVersions] = useState([]);
+  const [autoVersion, setAutoVersion] = useState(null);  // 开页自动加载的版本名（显示提示条）
+  const originalRef = useRef(null);                       // 本页原始烘焙数据（用于"恢复原始数据"）
+  const [toast, setToast] = useState({ msg: '', type: '', show: false });
+  const [busy, setBusy] = useState('');
+  const [dragOn, setDragOn] = useState(false);
+  const [noticeClosed, setNoticeClosed] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const viewportRef = useRef(null);
+  const fileRef = useRef(null);
+  const toastTimer = useRef(null);
+
+  const notify = useCallback((msg, type) => {
+    clearTimeout(toastTimer.current);
+    setToast({ msg, type: type || '', show: true });
+    toastTimer.current = setTimeout(() => setToast(t => ({ ...t, show: false })), type === 'error' ? 4200 : 2400);
+  }, []);
+  const commitTitle = useCallback(() => {
+    setTitle(t => (String(titleDraft).trim() || t));
+    setEditingTitle(false);
+  }, [titleDraft]);
+
+  const mapped = !!table && !mappingError(map, table.headers);
+  const built = useMemo(() => (mapped ? C.buildTree(table.rows, map, { rootName: title }) : null), [table, map, mapped]);
+  const index = useMemo(() => (built ? C.indexTree(built.root) : null), [built]);
+  // 聚合统计基于完整树计算，与展开层级/聚焦根无关
+  const aggMap = useMemo(() => (built ? C.computeAggregates(built.root, aggregates) : new Map()), [built, aggregates]);
+  const currentRoot = built ? ((rootId && index.byId.get(rootId)) || built.root) : null;
+
+  const resetView = useCallback(() => {
+    setCollapsed(new Set()); setExpanded(new Set()); setLayoutOverrides({});
+    setRootId(null); setRootHistory([]); setQuery(''); setHits([]); setHitIdx(0); setNoticeClosed(false);
+  }, []);
+
+  // 应用映射并生成树
+  const applyMapping = useCallback((tbl, nextMap, nextTitle, displayCfg, aggs) => {
+    const m = { ...nextMap, id: nextMap.id || nextMap.primary };
+    setTable(tbl);
+    setMap(m);
+    if (nextTitle !== undefined) setTitle(nextTitle || '组织架构树');
+    // 传入数组则替换；未传入则保留现有配置并丢弃字段已不存在的项
+    setAggregates(prev => C.validAggs(Array.isArray(aggs) ? aggs : prev, tbl.headers));
+    setDisplay(prev => {
+      if (displayCfg) return resolveDisplay(tbl.headers, m, displayCfg);
+      const keep = prev.visibleFields.length > 0 && prev.visibleFields.every(h => tbl.headers.includes(h));
+      const flags = { showLabels: prev.showLabels, showLayoutToggle: prev.showLayoutToggle, showButtons: prev.showButtons, showAggregates: prev.showAggregates };
+      return keep ? { ...prev, visibleFields: prev.visibleFields.filter(h => h !== m.primary) } : resolveDisplay(tbl.headers, m, flags);
+    });
+    setSortOrder({});
+    resetView();
+    setDraft(null);
+    setAutoVersion(null);               // 导入/重建后，开页提示条失效
+  }, [resetView]);
+
+  // 载入一个版本的数据（供自动加载与手动恢复共用，不含确认）
+  const loadVersionData = useCallback((v) => {
+    const rows = (v.rows || []).map(r => ({ ...r }));
+    C.ensureRowIds(rows);
+    const headers = v.headers || [];
+    const m = { ...EMPTY_MAP, ...(v.fieldMap || {}) };
+    setTable({ headers, rows, fileName: v.title || '版本' });
+    setMap(m);
+    setTitle(v.title || '组织架构树');
+    setDisplay(prev => resolveDisplay(headers, m, { showLabels: prev.showLabels, showLayoutToggle: prev.showLayoutToggle, showButtons: prev.showButtons, showAggregates: prev.showAggregates }));
+    setAggregates(prev => C.validAggs(prev, headers));
+    setSortOrder({});
+    resetView();
+  }, [resetView]);
+
+  // 加载表格数据：映射完整且允许时直接生成，否则打开字段设置（取消不影响当前树）
+  const loadTable = useCallback((tbl, preset, extra) => {
+    if (!tbl.headers.length || !tbl.rows.length) { notify('未解析到有效数据：请确认第一行为表头且至少有一行数据', 'error'); return; }
+    extra = extra || {};
+    const m = { ...C.autoMap(tbl.headers, tbl.rows) };
+    Object.keys(preset || {}).forEach(k => { if (preset[k]) m[k] = preset[k]; });
+    if (extra.maxDepth !== undefined) setMaxDepth(parseDepth(extra.maxDepth));
+    if (extra.autoApply && !mappingError(m, tbl.headers)) applyMapping(tbl, m, extra.title || title, extra.displayConfig, extra.aggregates);
+    else { if (extra.title) setTitle(extra.title); setDraft({ table: tbl, map: m, displayCfg: extra.displayConfig, aggs: extra.aggregates }); }
+  }, [applyMapping, notify, title]);
+
+  // 启动：优先加载最新版本，否则用烘焙数据/空模板
+  const bootLoad = useCallback(() => {
+    const init = window.__INITIAL_DATA__;
+    const baked = (init && Array.isArray(init.aoa)) ? init : null;
+    originalRef.current = baked;
+    const vs = loadVersions();
+    if (vs.length) {
+      loadVersionData(vs[0]);
+      setAutoVersion(vs[0].name);
+      return;
+    }
+    if (baked) {
+      const tbl = { ...C.normalizeTable(baked.aoa), fileName: baked.fileName || '内置数据' };
+      loadTable(tbl, baked.fieldMap, { title: baked.title, maxDepth: baked.maxDepth, displayConfig: baked.displayConfig,
+        aggregates: Array.isArray(baked.aggregates) ? baked.aggregates : undefined, autoApply: true });
+    }
+  }, [loadTable, loadVersionData]);
+  // 恢复本页原始（烘焙/空）数据
+  const revertToOriginal = useCallback(() => {
+    setAutoVersion(null);
+    const baked = originalRef.current;
+    if (baked) {
+      const tbl = { ...C.normalizeTable(baked.aoa), fileName: baked.fileName || '内置数据' };
+      loadTable(tbl, baked.fieldMap, { title: baked.title, maxDepth: baked.maxDepth, displayConfig: baked.displayConfig,
+        aggregates: Array.isArray(baked.aggregates) ? baked.aggregates : undefined, autoApply: true });
+    } else { setTable(null); setMap(EMPTY_MAP); }
+    notify('已恢复本页原始数据');
+  }, [loadTable, notify]);
+
+  useEffect(() => {
+    document.getElementById('boot')?.remove();
+    bootLoad();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  /* ---------- 数据导入 ---------- */
+  const importFile = useCallback(async (file) => {
+    if (!file) return;
+    if (!/\.(xlsx|xlsm|xls|csv)$/i.test(file.name)) { notify('请选择 .xlsx / .xls / .csv 文件', 'error'); return; }
+    setBusy('正在解析 Excel…');
+    try {
+      const XLSX = await ensureLib('xlsx');
+      const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
+      const base = file.name.replace(/\.[^.]+$/, '');
+      loadTable({ ...C.normalizeTable(aoa), fileName: file.name }, null, { title: title === '组织架构树' ? base : undefined });
+    } catch (e) {
+      notify('Excel 解析失败：' + (e && e.message ? e.message : e), 'error');
+    } finally {
+      setBusy('');
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  }, [loadTable, notify, title]);
+  const loadSample = () => loadTable({ ...C.normalizeTable(C.SAMPLE_AOA), fileName: '示例数据' }, null,
+    { title: '示例公司组织架构', autoApply: true, maxDepth: DEFAULT_DEPTH });
+  const downloadTemplate = async () => {
+    setBusy('正在生成模板…');
+    try {
+      const XLSX = await ensureLib('xlsx');
+      C.generateTemplate(XLSX);
+      notify('模板已下载：第一行是表头，第二行是填写说明，导入时会自动跳过说明行');
+    } catch (e) { notify('模板生成失败：' + e.message, 'error'); }
+    finally { setBusy(''); }
+  };
+  const onDrop = (e) => { e.preventDefault(); setDragOn(false); importFile(e.dataTransfer.files && e.dataTransfer.files[0]); };
+
+  /* ---------- 视图状态 ---------- */
+  const view = useMemo(() => ({ maxDepth, collapsed, expanded, sortOrder }), [maxDepth, collapsed, expanded, sortOrder]);
+  const scrollToNode = useCallback((id) => {
+    setTimeout(() => {
+      const el = viewportRef.current && viewportRef.current.querySelector(`[data-id="${id}"]`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    }, 120);
+  }, []);
+
+  // 搜索：命中高亮 + 自动展开祖先路径（含超出深度部分）+ 定位首个命中
+  useEffect(() => {
+    if (!currentRoot) return undefined;
+    if (!query.trim()) { setHits([]); setHitIdx(0); return undefined; }   // 清空搜索立即生效
+    const t = setTimeout(() => {
+      const ids = C.searchTree(currentRoot, query, map);
+      setHits(ids); setHitIdx(0);
+      if (!ids.length) return;
+      const anc = new Set();
+      ids.slice(0, 500).forEach(id => C.ancestorsOf(id, index.parentOf).forEach(a => anc.add(a)));
+      setCollapsed(prev => { const n = new Set(prev); anc.forEach(a => n.delete(a)); return n; });
+      setExpanded(prev => { const n = new Set(prev); anc.forEach(a => n.add(a)); return n; });
+      scrollToNode(ids[0]);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [query, currentRoot, map, index, scrollToNode]);
+  const matchSet = useMemo(() => new Set(hits), [hits]);
+  const pathSet = useMemo(() => {
+    const s = new Set(hits);
+    if (index) hits.forEach(id => C.ancestorsOf(id, index.parentOf).forEach(a => s.add(a)));
+    return s;
+  }, [hits, index]);
+  const stepHit = (dir) => {
+    if (!hits.length) return;
+    const i = (hitIdx + dir + hits.length) % hits.length;
+    setHitIdx(i); scrollToNode(hits[i]);
+  };
+
+  /* ---------- 树交互 ---------- */
+  const onSingle = useCallback((node, depth) => {
+    if (query) setQuery('');                                // 搜索态下先清空搜索
+    if (!node.children.length) return;
+    const exceed = maxDepth != null && depth + 1 > maxDepth;
+    const toggle = (set, id) => { const n = new Set(set); n.has(id) ? n.delete(id) : n.add(id); return n; };
+    if (exceed) {                                           // 超出深度：局部展开/收起
+      if (collapsed.has(node.id)) {
+        setCollapsed(s => { const n = new Set(s); n.delete(node.id); return n; });
+        setExpanded(s => new Set(s).add(node.id));
+      } else setExpanded(s => toggle(s, node.id));
+    } else setCollapsed(s => toggle(s, node.id));
+  }, [query, maxDepth, collapsed]);
+  const onDouble = useCallback((node) => {
+    if (!currentRoot || node.id === currentRoot.id) return;
+    setRootHistory(h => h.concat(currentRoot.id));
+    setRootId(node.id);
+    setCollapsed(new Set()); setExpanded(new Set()); setLayoutOverrides({}); setQuery('');
+    notify(`已聚焦到「${node.virtual ? title : node.name}」，可点"返回上级"回退`);
+  }, [currentRoot, notify, title]);
+  const goBack = () => {
+    if (!rootHistory.length) return;
+    setRootId(rootHistory[rootHistory.length - 1]);
+    setRootHistory(h => h.slice(0, -1));
+    setCollapsed(new Set()); setExpanded(new Set());
+  };
+  const goRoot = () => { setRootId(null); setRootHistory([]); setCollapsed(new Set()); setExpanded(new Set()); };
+  const onToggleLayout = useCallback((id, mode) => {
+    setLayoutOverrides(o => ({ ...o, [id]: mode === 'horizontal' ? 'vertical' : 'horizontal' }));
+  }, []);
+  const onOpenSort = useCallback((id) => setSortNodeId(id), []);
+  const changeDepth = (v) => { setMaxDepth(parseDepth(v)); setExpanded(new Set()); };
+
+  /* ---------- 编辑模式 ---------- */
+  // 提交新的 rows：重建树（useMemo 依赖 table），并在聚焦根失效时重置
+  const commitRows = useCallback((nextRows, msg) => {
+    setTable(t => ({ ...t, rows: nextRows }));
+    if (msg) notify(msg);
+  }, [notify]);
+  // 聚焦根若被删除则回到整树根（随 built 变化校正）
+  useEffect(() => {
+    if (built && rootId && !index.byId.get(rootId)) { setRootId(null); setRootHistory([]); }
+  }, [built, index, rootId]);
+
+  const openAdd = useCallback((parentNode) => setEditNode({ mode: 'add', parentNode }), []);
+  const openEdit = useCallback((node) => setEditNode({ mode: 'edit', node }), []);
+  const openDelete = useCallback((node) => setDelNode(node), []);
+
+  // 保存新建/编辑
+  const saveNode = useCallback((vals, parentKey) => {
+    if (!table) return;
+    const idField = map.id || map.primary;
+    const info = editNode;
+    const rows = table.rows.slice();
+    if (info.mode === 'add') {
+      const row = { __rid: C.genRowId() };
+      table.headers.forEach(h => { row[h] = vals[h] != null ? vals[h] : ''; });
+      if (idField && idField !== map.primary && !String(row[idField] || '').trim()) row[idField] = C.genNodeKey(rows, idField);
+      if (map.parent) row[map.parent] = parentKey || '';
+      rows.push(row);
+      commitRows(rows, `已新建「${vals[map.primary]}」`);
+    } else {
+      const rid = info.node.row.__rid;
+      const next = rows.map(r => {
+        if (r.__rid !== rid) return r;
+        const nr = { ...r };
+        table.headers.forEach(h => { if (h !== map.parent) nr[h] = vals[h] != null ? vals[h] : ''; });
+        if (map.parent) nr[map.parent] = parentKey || '';
+        return nr;
+      });
+      commitRows(next, '已保存修改');
+    }
+    setEditNode(null);
+  }, [table, map, editNode, commitRows]);
+
+  // 拖拽变更上级
+  const reparent = useCallback((srcId, targetNode) => {
+    if (!table || !index) return;
+    const src = index.byId.get(srcId);
+    const chk = src && C.canReparent(src, targetNode, index);
+    if (!chk || !chk.ok) { if (chk) notify(chk.reason, 'error'); return; }
+    const rid = src.row.__rid;
+    const newKey = targetNode.virtual ? '' : targetNode.key;
+    const next = table.rows.map(r => (r.__rid === rid ? { ...r, [map.parent]: newKey } : r));
+    commitRows(next, `已将「${src.name}」挂到「${targetNode.virtual ? title : targetNode.name}」下`);
+    setDrag(null);
+  }, [table, index, map, commitRows, notify, title, setDrag]);
+
+  // 设为顶层（上级清空）
+  const reparentToTop = useCallback((srcId) => {
+    if (!table || !index) return;
+    const src = index.byId.get(srcId);
+    if (!src || src.virtual) return;
+    const pv = map.parent ? String(src.row[map.parent] || '').trim() : '';
+    if (C.isRootValue(pv)) { setDrag(null); return; }
+    commitRows(table.rows.map(r => (r.__rid === src.row.__rid ? { ...r, [map.parent]: '' } : r)), `已将「${src.name}」设为顶层`);
+    setDrag(null);
+  }, [table, index, map, commitRows, setDrag]);
+
+  // 指针式拖拽：按住卡片移动 → 松手落到目标卡片/顶层区
+  const didDrag = useCallback(() => { const v = didDragRef.current; didDragRef.current = false; return v; }, []);
+  const startDrag = useCallback((node, x, y) => {
+    if (!editMode) return;
+    didDragRef.current = false;
+    dragRef.current = { node, startX: x, startY: y, moved: false };
+    const DRAG_THRESHOLD = 5;
+    const hitTest = (cx, cy) => {
+      const el = document.elementFromPoint(cx, cy);
+      if (!el) return { id: null, ok: false, top: false };
+      if (el.closest('#topDrop')) return { id: null, ok: true, top: true };
+      const cardEl = el.closest('[data-node-card]');
+      if (!cardEl) return { id: null, ok: false, top: false };
+      const tid = cardEl.getAttribute('data-id');
+      if (!tid || tid === node.id) return { id: null, ok: false, top: false };
+      const tgt = index && index.byId.get(tid);
+      const ok = tgt && C.canReparent(node, tgt, index).ok;
+      return { id: tid, ok: !!ok, top: false };
+    };
+    const onMove = (e) => {
+      const dr = dragRef.current;
+      if (!dr) return;
+      if (!dr.moved) {
+        if (Math.abs(e.clientX - dr.startX) < DRAG_THRESHOLD && Math.abs(e.clientY - dr.startY) < DRAG_THRESHOLD) return;
+        dr.moved = true;
+        setDrag(node.id);
+      }
+      setGhostPos({ x: e.clientX, y: e.clientY });
+      setDropTarget(hitTest(e.clientX, e.clientY));
+    };
+    const onUp = (e) => {
+      window.removeEventListener('pointermove', onMove, true);
+      window.removeEventListener('pointerup', onUp, true);
+      const dr = dragRef.current;
+      dragRef.current = null;
+      setGhostPos(null);
+      setDropTarget({ id: null, ok: false, top: false });
+      if (dr && dr.moved) {
+        didDragRef.current = true;                 // 抑制本次 click
+        const hit = hitTest(e.clientX, e.clientY);
+        if (hit.top) reparentToTop(node.id);
+        else if (hit.id && hit.ok) reparent(node.id, index.byId.get(hit.id));
+        else setDrag(null);
+      } else {
+        setDrag(null);
+      }
+    };
+    window.addEventListener('pointermove', onMove, true);
+    window.addEventListener('pointerup', onUp, true);
+  }, [editMode, index, reparent, reparentToTop, setDrag]);
+
+  // 删除：mode='subtree' 连同下级 | 'promote' 下级上移
+  const confirmDelete = useCallback((mode) => {
+    if (!table || !delNode) { setDelNode(null); return; }
+    const node = delNode;
+    const parentPv = map.parent ? String(node.row[map.parent] || '') : '';
+    if (mode === 'promote') {
+      const kidRids = new Set((node.children || []).map(c => c.row && c.row.__rid).filter(Boolean));
+      const next = table.rows
+        .filter(r => r.__rid !== node.row.__rid)
+        .map(r => (kidRids.has(r.__rid) ? { ...r, [map.parent]: parentPv } : r));
+      commitRows(next, `已删除「${node.name}」，下级已上移`);
+    } else {
+      const rids = new Set(C.subtreeRids(node));
+      const next = table.rows.filter(r => !rids.has(r.__rid));
+      commitRows(next, `已删除「${node.name}」及其下级`);
+    }
+    setDelNode(null);
+  }, [table, delNode, map, commitRows]);
+
+  // 导出当前（含改动）数据为 Excel
+  const exportExcel = async () => {
+    if (!table) return;
+    setBusy('正在导出 Excel…');
+    try {
+      const XLSX = await ensureLib('xlsx');
+      const aoa = [table.headers].concat(table.rows.map(r => table.headers.map(h => (r[h] == null ? '' : r[h]))));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), '人员');
+      XLSX.writeFile(wb, `${safeFileName(title)}.xlsx`);
+      notify('已导出 Excel（含当前改动）');
+    } catch (e) { notify('导出失败：' + e.message, 'error'); }
+    finally { setBusy(''); }
+  };
+
+  /* ---------- 保存版本（本地） ---------- */
+  const openVersions = useCallback(() => { setVersions(loadVersions()); setVersionOpen(true); }, []);
+  const saveVersion = useCallback((rawName) => {
+    if (!table || !built) return;
+    const name = String(rawName || '').trim() || `${title}-${new Date().toLocaleString('zh-CN')}`;
+    const v = {
+      id: C.genRowId(), name, savedAt: Date.now(), title,
+      headers: table.headers.slice(),
+      rows: table.rows.map(r => ({ ...r })),
+      fieldMap: { ...map }, count: built.total,
+    };
+    const next = [v].concat(loadVersions());
+    const res = saveVersions(next);
+    if (!res.ok) { notify('保存失败：浏览器本地存储空间不足或不可用', 'error'); return; }
+    setVersions(next); notify(`已保存版本「${name}」`);
+  }, [table, built, title, map, notify]);
+  const restoreVersion = useCallback((v) => {
+    if (!v) return;
+    if (!window.confirm(`恢复版本「${v.name}」将覆盖当前树（未保存的改动会丢失），继续？`)) return;
+    loadVersionData(v);
+    setVersionOpen(false);
+    setAutoVersion(null);
+    notify(`已恢复版本「${v.name}」`);
+  }, [loadVersionData, notify]);
+  const deleteVersion = useCallback((id) => {
+    const next = loadVersions().filter(x => x.id !== id);
+    saveVersions(next); setVersions(next);
+  }, []);
+
+  // 构造"上级节点"下拉选项：排除被编辑节点自身及其子孙（避免成环）
+  const parentOptions = useMemo(() => {
+    if (!built || !editNode || editNode.mode !== 'edit') return [];
+    const exclude = new Set(C.subtreeRids(editNode.node));
+    const opts = [];
+    C.walk(built.root, n => { if (!n.virtual && !exclude.has(n.row && n.row.__rid)) opts.push({ key: n.key, label: n.name }); });
+    return opts;
+  }, [built, editNode]);
+  // 生成/聚焦后把根节点水平居中
+  useLayoutEffect(() => {
+    const vp = viewportRef.current;
+    if (!vp || !currentRoot) return;
+    vp.scrollLeft = Math.max(0, (vp.scrollWidth - vp.clientWidth) / 2);
+    vp.scrollTop = 0;
+  }, [currentRoot, built]);
+
+  // 拖拽空白区平移画布（原生滚动，不用 transform）
+  useEffect(() => {
+    const vp = viewportRef.current;
+    if (!vp) return undefined;
+    let st = null;
+    const down = (e) => {
+      if (e.button !== 0 || e.target.closest('[data-node-card], button, input, select, textarea, a, label')) return;
+      st = { x: e.clientX, y: e.clientY, l: vp.scrollLeft, t: vp.scrollTop, id: e.pointerId };
+      vp.setPointerCapture(e.pointerId);
+      vp.classList.add('is-panning');
+    };
+    const move = (e) => {
+      if (!st) return;
+      vp.scrollLeft = st.l - (e.clientX - st.x);
+      vp.scrollTop = st.t - (e.clientY - st.y);
+    };
+    const up = () => {
+      if (!st) return;
+      try { vp.releasePointerCapture(st.id); } catch (_) { /* 已释放 */ }
+      st = null;
+      vp.classList.remove('is-panning');
+    };
+    vp.addEventListener('pointerdown', down);
+    vp.addEventListener('pointermove', move);
+    vp.addEventListener('pointerup', up);
+    vp.addEventListener('pointercancel', up);
+    return () => {
+      vp.removeEventListener('pointerdown', down); vp.removeEventListener('pointermove', move);
+      vp.removeEventListener('pointerup', up); vp.removeEventListener('pointercancel', up);
+    };
+  }, [!!built]);
+
+  useEffect(() => {
+    const onFs = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFs);
+    return () => document.removeEventListener('fullscreenchange', onFs);
+  }, []);
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => notify('浏览器不允许全屏', 'error'));
+  };
+
+  /* ---------- 导出 ---------- */
+  const metasOf = useCallback((node) => display.visibleFields
+    .map(f => [f, node.row[f]])
+    .filter(([, v]) => v !== undefined && v !== null && String(v) !== '')
+    .map(([f, v]) => (display.showLabels ? `${f}：${v}` : String(v)))
+    .concat(display.showAggregates ? (aggMap.get(node.id) || []).map(r => `${r.label} ${r.text}`) : []), [display, aggMap]);
+  const exportPpt = () => {
+    if (!currentRoot) return;
+    try {
+      const vt = C.visibleTree(currentRoot, { ...view, rootName: title }, metasOf);
+      const bytes = C.buildPptx(vt, { title });
+      downloadBlob(new Blob([bytes], { type: C.MIME_PPTX }), `${safeFileName(title)}.pptx`);
+      notify('PPT 已导出（按当前可见节点生成）');
+    } catch (e) { notify('PPT 导出失败：' + e.message, 'error'); }
+  };
+  const exportPng = async () => {
+    const stage = viewportRef.current && viewportRef.current.querySelector('.tree-stage');
+    if (!stage) return;
+    setBusy('正在生成图片…');
+    try {
+      const h2c = await ensureLib('html2canvas');
+      const w = stage.scrollWidth, h = stage.scrollHeight;
+      const canvas = await h2c(stage, {
+        backgroundColor: '#eef2f6', scale: Math.min(2, 16000 / Math.max(w, h, 1)),
+        width: w, height: h, windowWidth: w + 120, windowHeight: h + 120, scrollX: 0, scrollY: 0,
+        onclone: (doc) => {
+          doc.documentElement.style.overflow = 'visible'; doc.body.style.overflow = 'visible';
+          const app = doc.querySelector('.app'); if (app) { app.style.height = 'auto'; app.style.overflow = 'visible'; }
+          const ws = doc.querySelector('.workspace'); if (ws) ws.style.overflow = 'visible';
+          const vp = doc.querySelector('.tree-viewport'); if (vp) { vp.style.position = 'static'; vp.style.overflow = 'visible'; }
+        },
+      });
+      await new Promise((res, rej) => canvas.toBlob(b => (b ? (downloadBlob(b, `${safeFileName(title)}.png`), res()) : rej(new Error('图片过大'))), 'image/png'));
+      notify('图片已导出');
+    } catch (e) { notify('图片导出失败：' + (e && e.message ? e.message : e), 'error'); }
+    finally { setBusy(''); }
+  };
+  /* ---------- 渲染 ---------- */
+  const edit = useMemo(() => ({
+    index, dragId, startDrag, didDrag,
+    dropTargetId: dropTarget.id, dropOk: dropTarget.ok,
+    onAdd: openAdd, onEdit: openEdit, onDelete: openDelete, onReparent: reparent,
+  }), [index, dragId, startDrag, didDrag, dropTarget, openAdd, openEdit, openDelete, reparent]);
+  const ctx = useMemo(() => ({
+    view, layoutOverrides, display, map, matchSet, pathSet, query, rootName: title, aggMap,
+    currentHit: hits.length ? hits[hitIdx] : null,
+    onSingle, onDouble, onToggleLayout, onOpenSort,
+    editMode, edit,
+  }), [view, layoutOverrides, display, map, matchSet, pathSet, query, title, aggMap, hits, hitIdx, onSingle, onDouble, onToggleLayout, onOpenSort, editMode, edit]);
+
+  const w = built ? built.warnings : null;
+  const short = (arr) => arr.slice(0, 5).join('、') + (arr.length > 5 ? ` 等 ${arr.length} 个` : '');
+  const notices = w ? [
+    w.cycles.length && `检测到循环引用，已在「${short(w.cycles)}」处断开并提升为顶层节点`,
+    w.selfRefs.length && `上级是自己：${short(w.selfRefs)}`,
+    w.duplicates.length && `节点标识重复：${short(w.duplicates)}（下级会挂到第一个同名节点，建议把"节点标识列"设为工号）`,
+    w.orphans.length > 1 && `${w.orphans.length} 个节点的上级未在表中找到，已作为顶层节点`,
+  ].filter(Boolean) : [];
+  const depthLevels = index ? index.maxDepth + (built.root.virtual ? 0 : 1) : 0;
+  const sortNode = sortNodeId && index ? index.byId.get(sortNodeId) : null;
+  useEffect(() => { document.title = title; }, [title]);
+
+  return (
+    <div className={`app ${editMode ? 'is-edit' : ''}`}>
+      <header className="topbar">
+        <div className="topbar-inner">
+          <div className="title-row">
+            {editingTitle ? (
+              <input className="title-input" value={titleDraft} autoFocus aria-label="编辑标题"
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onBlur={commitTitle}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commitTitle(); } if (e.key === 'Escape') setEditingTitle(false); }} />
+            ) : (
+              <h1 className="title-edit" title="点击修改标题" tabIndex={0}
+                onClick={() => { setTitleDraft(title); setEditingTitle(true); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { setTitleDraft(title); setEditingTitle(true); } }}>
+                {title}<Icon name="edit" size={13} />
+              </h1>
+            )}
+            {built && (
+              <div className="stats">
+                <span className="stat">节点<strong>{built.total}</strong></span>
+                <span className="stat">层级<strong>{depthLevels}</strong></span>
+                {currentRoot !== built.root && <span className="root-chip" title={currentRoot.name}>当前根：{currentRoot.name}</span>}
+              </div>
+            )}
+          </div>
+          <div className="controls-row">
+            <div className="ctl-group">
+              <input ref={fileRef} type="file" accept=".xlsx,.xlsm,.xls,.csv" hidden onChange={(e) => importFile(e.target.files[0])} />
+              <button type="button" className="btn primary" onClick={() => fileRef.current.click()}><Icon name="upload" />导入 Excel</button>
+              <button type="button" className="btn" disabled={!table} onClick={() => setDraft({ table, map: { ...map }, displayCfg: null })}><Icon name="sliders" />字段设置</button>
+              <span className="popover-anchor">
+                <button type="button" className="btn" data-display-btn="1" disabled={!built} aria-expanded={showDisplay} onClick={() => setShowDisplay(v => !v)}><Icon name="eye" />显示设置</button>
+                {showDisplay && built && <DisplayPanel headers={table.headers} map={map} display={display} aggCount={aggregates.length} onChange={setDisplay} onClose={() => setShowDisplay(false)} />}
+              </span>
+            </div>
+            <span className="ctl-sep" />
+            <div className="ctl-group">
+              <span className="ctl-label">展示层级</span>
+              <select className="control" aria-label="最大展示深度" value={maxDepth == null ? 'all' : String(maxDepth)} onChange={(e) => changeDepth(e.target.value)}>
+                {DEPTH_OPTIONS.map(d => <option key={d} value={String(d)}>展开 {d} 层</option>)}
+                <option value="all">全部展开</option>
+              </select>
+            </div>
+            <div className="ctl-group">
+              <div className="search-wrap">
+                <Icon name="search" />
+                <input className="search-input" placeholder="搜索名称 / 层级 / 部门" value={query} disabled={!built} aria-label="搜索节点"
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); stepHit(e.shiftKey ? -1 : 1); } if (e.key === 'Escape') setQuery(''); }} />
+                {query && <button type="button" className="search-clear" onClick={() => setQuery('')} aria-label="清空搜索"><Icon name="x" size={12} /></button>}
+              </div>
+              {query.trim() && <span className={`search-count ${hits.length ? '' : 'miss'}`} aria-live="polite">{hits.length ? `${hitIdx + 1} / ${hits.length}` : '无匹配'}</span>}
+            </div>
+            <span className="ctl-sep" />
+            <div className="ctl-group">
+              <button type="button" className="btn" disabled={!rootHistory.length} onClick={goBack}><Icon name="back" />返回上级</button>
+              <button type="button" className="btn" disabled={!built || currentRoot === built.root} onClick={goRoot}><Icon name="home" />回到根</button>
+              <button type="button" className="btn" onClick={toggleFullscreen}><Icon name={isFullscreen ? 'minimize' : 'maximize'} />{isFullscreen ? '退出全屏' : '全屏'}</button>
+            </div>
+            <span className="ctl-sep" />
+            <div className="ctl-group">
+              <button type="button" className="btn" onClick={downloadTemplate}><Icon name="sheet" />下载模板</button>
+            </div>
+            <span className="ctl-sep" />
+            <div className="ctl-group">
+              <button type="button" className={`btn ${editMode ? 'is-on' : ''}`} disabled={!built} aria-pressed={editMode}
+                onClick={() => { setEditMode(v => !v); setDrag(null); setQuery(''); }}>
+                <Icon name="edit" />{editMode ? '退出编辑' : '编辑'}
+              </button>
+              {editMode && <button type="button" className="btn" disabled={!built} onClick={exportExcel}><Icon name="sheet" />导出 Excel</button>}
+              <button type="button" className="btn" disabled={!built} onClick={openVersions}><Icon name="layers" />版本</button>
+            </div>
+            <span className="ctl-sep" />
+            <div className="ctl-group">
+              <button type="button" className="btn" disabled={!built} onClick={exportPpt}><Icon name="ppt" />导出 PPT</button>
+              <button type="button" className="btn" disabled={!built} onClick={exportPng}><Icon name="image" />导出 PNG</button>
+            </div>
+          </div>
+          {built && !editMode && <div className="help-tip">单击节点展开/折叠 · 双击以该节点为根聚焦 · 拖拽空白处平移 · 搜索框回车跳到下一个命中</div>}
+        </div>
+      </header>
+      <div className="subbar">
+        {autoVersion && built && (
+          <div className="ver-banner" role="status">
+            <Icon name="layers" size={13} /><span>已加载最新版本「{autoVersion}」</span>
+            <button type="button" className="link" onClick={revertToOriginal}>恢复原始数据</button>
+            <button type="button" className="x" onClick={() => setAutoVersion(null)} aria-label="关闭提示"><Icon name="x" size={12} /></button>
+          </div>
+        )}
+        {editMode && built && (
+          <div className="edit-tip" role="status">
+            <Icon name="edit" size={13} />编辑模式：拖动卡片变更上级 · 卡片右上角 ＋ 新建下级 / ✎ 编辑 / 🗑 删除 · 改动请"导出 Excel"保存
+          </div>
+        )}
+        {notices.length > 0 && !noticeClosed && (
+          <div className="notice" role="status">
+            <Icon name="alert" /><span>{notices.join('；')}</span>
+            <button type="button" onClick={() => setNoticeClosed(true)}>知道了</button>
+          </div>
+        )}
+      </div>
+
+      <main className="workspace">
+        {built ? (
+          <section className="tree-viewport" ref={viewportRef} aria-label="架构树画布">
+            <div className="tree-stage">
+              {editMode && dragId && !((index && index.byId.get(dragId)) || {}).virtual && (
+                <div className={`top-drop ${dropTarget.top ? 'drop-ok' : ''}`} id="topDrop">
+                  拖到此处：设为顶层节点
+                </div>
+              )}
+              <TreeCtx.Provider value={ctx}>
+                <ul className="tree" role="tree" aria-label={title}>
+                  <TreeBranch key={currentRoot.id} node={currentRoot} depth={0} isRoot isInCompactLane={false} />
+                </ul>
+              </TreeCtx.Provider>
+            </div>
+          </section>
+        ) : (
+          <div className="empty">
+            <div className={`empty-card ${dragOn ? 'drag-on' : ''}`}
+              onDragOver={(e) => { e.preventDefault(); setDragOn(true); }} onDragLeave={() => setDragOn(false)} onDrop={onDrop}>
+              <h2>导入 Excel 生成架构树</h2>
+              <p>把 Excel 文件拖到这里，或点击下方按钮选择文件（读取第一个工作表，第一行为表头）。</p>
+              <ol>
+                <li>每行一个节点，需有<b>主字段</b>（如 姓名）和<b>上级字段</b>（如 主管）。</li>
+                <li>上级字段的值要能在主字段（或你指定的标识列，如工号）中找到；为空即顶层节点。</li>
+                <li>导入后在"字段设置"确认映射，在"显示设置"选择节点上展示的字段。</li>
+              </ol>
+              <div className="empty-actions">
+                <button type="button" className="btn primary lg" onClick={() => fileRef.current.click()}><Icon name="upload" />选择 Excel</button>
+                <button type="button" className="btn ghost lg" onClick={downloadTemplate}><Icon name="sheet" />下载模板</button>
+                <button type="button" className="btn ghost lg" onClick={loadSample}><Icon name="layers" />查看示例</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {draft && (
+        <FieldMappingModal table={draft.table} initial={{ ...EMPTY_MAP, ...draft.map, id: draft.map.id === draft.map.primary ? '' : (draft.map.id || '') }} title={title}
+          initialAggs={Array.isArray(draft.aggs) ? draft.aggs : aggregates}
+          onCancel={() => setDraft(null)}
+          onConfirm={(m, name, aggs) => applyMapping(draft.table, m, name, draft.displayCfg || undefined, aggs)} />
+      )}
+      {sortNode && (
+        <SortModal node={sortNode} order={sortOrder[sortNode.id]} onCancel={() => setSortNodeId(null)}
+          onConfirm={(ids) => { setSortOrder(o => ({ ...o, [sortNode.id]: ids })); setSortNodeId(null); notify('已更新子节点顺序'); }} />
+      )}
+      {editNode && table && (
+        <NodeEditModal
+          node={editNode.mode === 'edit' ? editNode.node
+            : { name: '', row: map.parent ? { [map.parent]: (editNode.parentNode && !editNode.parentNode.virtual ? editNode.parentNode.key : '') } : {}, children: [] }}
+          headers={table.headers} map={map}
+          isNew={editNode.mode === 'add'}
+          parentOptions={(() => {
+            const base = [];
+            if (built) C.walk(built.root, n => { if (!n.virtual) base.push(n); });
+            if (editNode.mode === 'edit') {
+              const ex = new Set(C.subtreeRids(editNode.node));
+              return base.filter(n => !ex.has(n.row && n.row.__rid)).map(n => ({ key: n.key, label: n.name }));
+            }
+            return base.map(n => ({ key: n.key, label: n.name }));
+          })()}
+          onCancel={() => setEditNode(null)}
+          onConfirm={(vals, parentKey) => saveNode(vals, parentKey)}
+        />
+      )}
+      {delNode && (
+        <DeleteModal node={delNode}
+          childCount={delNode.children ? delNode.children.length : 0}
+          descCount={Math.max(0, C.subtreeRids(delNode).length - 1)}
+          onCancel={() => setDelNode(null)} onConfirm={confirmDelete} />
+      )}
+      {versionOpen && (
+        <VersionModal versions={versions} defaultName={`${title}-${new Date().toLocaleString('zh-CN')}`}
+          onClose={() => setVersionOpen(false)} onSave={saveVersion} onRestore={restoreVersion} onDelete={deleteVersion} />
+      )}
+      {busy && <div className="busy" role="status">{busy}</div>}
+      {ghostPos && dragId && index && index.byId.get(dragId) && (
+        <div className="drag-ghost" style={{ left: ghostPos.x + 12, top: ghostPos.y + 12 }}>{index.byId.get(dragId).name}</div>
+      )}
+      <div className={`toast ${toast.show ? 'show' : ''} ${toast.type}`} role="status" aria-live="polite">{toast.msg}</div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+<script>
+/* 启动器：按顺序加载 React / ReactDOM / Babel（jsdelivr 失败自动切 unpkg），再编译执行 #app-src。
+ * Excel 解析（xlsx）与 PNG 导出（html2canvas）在首次使用时才加载。 */
+(function () {
+  var J = 'https://cdn.jsdelivr.net/npm/', U = 'https://unpkg.com/';
+  var both = function (p) { return [J + p, U + p]; };
+  var BOOT = [
+    both('react@18.3.1/umd/react.production.min.js'),
+    both('react-dom@18.3.1/umd/react-dom.production.min.js'),
+    both('@babel/standalone@7.24.7/babel.min.js'),
+  ];
+  window.__LIBS__ = {
+    xlsx: both('xlsx@0.18.5/dist/xlsx.full.min.js'),
+    html2canvas: both('html2canvas@1.4.1/dist/html2canvas.min.js'),
+  };
+  window.__loadScript = function (urls) {
+    return new Promise(function (resolve, reject) {
+      var i = 0;
+      (function next() {
+        if (i >= urls.length) { reject(new Error('无法加载脚本：' + urls[0])); return; }
+        var s = document.createElement('script');
+        s.src = urls[i++];
+        s.onload = function () { resolve(); };
+        s.onerror = function () { s.remove(); next(); };
+        document.head.appendChild(s);
+      })();
+    });
+  };
+  function fail(title, detail) {
+    var el = document.getElementById('boot');
+    if (!el) { el = document.createElement('div'); el.id = 'boot'; document.body.appendChild(el); }
+    el.className = 'boot boot-error';
+    el.innerHTML = '';
+    var box = document.createElement('div');
+    var h = document.createElement('div'); h.textContent = title; box.appendChild(h);
+    if (detail) { var pre = document.createElement('pre'); pre.textContent = detail; box.appendChild(pre); }
+    el.appendChild(box);
+  }
+  window.addEventListener('error', function (e) { if (!document.querySelector('.app')) fail('页面运行出错', String(e.message || e)); });
+  BOOT.reduce(function (p, urls) { return p.then(function () { return window.__loadScript(urls); }); }, Promise.resolve())
+    .then(function () {
+      var code;
+      try {
+        code = Babel.transform(document.getElementById('app-src').textContent, { presets: ['react'], sourceType: 'script' }).code;
+      } catch (e) { fail('应用代码编译失败', e.message); return; }
+      try { (0, eval)(code); } catch (e) { fail('应用启动失败', e.stack || e.message); }
+    })
+    .catch(function (e) {
+      fail('依赖加载失败：请确认可以访问 cdn.jsdelivr.net 或 unpkg.com', e.message +
+        '\n离线/内网环境的处理方式见 skill 文档 references/data-format.md 「离线使用」。');
+    });
+})();
+</script>
+</body>
+</html>
