@@ -12,6 +12,8 @@
 - **编辑模式**：按住卡片拖动变更上级、新建/编辑/删除节点、导出含改动的 Excel。
 - **保存版本**：存浏览器本地（localStorage），刷新/重开不丢，可恢复/删除；重开自动加载最新版本。
 - **标题可改**；**导出 16:9 PPT（零依赖 OOXML+ZIP）/ PNG**。
+- **示意图**<img width="2526" height="1472" alt="image" src="https://github.com/user-attachments/assets/6b88279e-6457-4350-8bc6-bcd9b3cf6cee" />
+
 
 ## 安装
 Comate 用户把本仓库内容放到技能目录即可：
