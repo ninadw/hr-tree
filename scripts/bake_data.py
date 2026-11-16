@@ -123,7 +123,18 @@ def suggest(headers):
     primary = pick("primary", []) or (headers[0] if headers else "")
     parent = pick("parent", [primary])
     level = pick("level", [primary, parent])
-    dept = pick("dept", [primary, parent, level])
+    # 部门字段排除"负责人/领导"这类人名列
+    personish = re.compile(r"(负责人|领导|主管|经理|owner|leader|manager)", re.I)
+    dept = ""
+    for rx in RX["dept"]:
+        for h in headers:
+            if h in (primary, parent, level) or personish.search(h):
+                continue
+            if re.search(rx, h, re.I):
+                dept = h
+                break
+        if dept:
+            break
     return {"primary": primary, "parent": parent, "level": level, "dept": dept}
 
 
