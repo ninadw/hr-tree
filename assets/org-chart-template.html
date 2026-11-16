@@ -55,8 +55,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,.node-card:focus-v
 .notice button{margin-left:8px;border:0;background:transparent;color:inherit;cursor:pointer;text-decoration:underline;font-size:12px}
 .popover-anchor{position:relative}
 .popover{position:absolute;top:calc(100% + 6px);left:0;z-index:40;width:270px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(30,42,56,.18);padding:12px;text-align:left}
-.popover h3{font-size:12px;color:var(--muted);font-weight:600;margin:2px 0 6px}
-.popover .hint{font-size:11px;color:var(--muted);margin-top:8px}
+.menu{position:absolute;top:calc(100% + 6px);left:0;z-index:40;width:270px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(30,42,56,.18);padding:6px;text-align:left}
+.menu button{display:block;width:100%;text-align:left;border:0;background:transparent;border-radius:7px;padding:9px 10px;cursor:pointer;font:inherit}
+.menu button:hover{background:var(--surface-2)}
+.menu button b{display:block;font-size:13px;color:var(--ink);font-weight:600}
+.menu button span{display:block;font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4}
+.menu-sep{height:1px;background:#edf1f5;margin:6px 4px}
+.popover h3{font-size:12px;color:var(--muted);font-weight:600;margin:2px 0 6px}.popover .hint{font-size:11px;color:var(--muted);margin-top:8px}
 .check{display:flex;align-items:center;gap:8px;padding:4px 4px;font-size:13px;cursor:pointer;border-radius:4px}
 .check:hover{background:var(--surface-2)}
 .check input{accent-color:var(--teal)}
@@ -966,8 +971,9 @@ var OrgCore = (function () {
     return out;
   }
 
-  /* ---------- 内置示例数据（组织维度：部门 / 上级部门 / 组织负责人 / 职级 / 下级人数） ---------- */
-  const SAMPLE_AOA = [
+  /* ---------- 内置示例数据：两种场景 ---------- */
+  // 组织树：主字段=部门
+  const SAMPLE_ORG_AOA = [
     '部门|上级部门|组织负责人|职级|下级人数',
     '示例科技||王总|M6|120',
     '技术中心|示例科技|李明|M5|58', '产品中心|示例科技|周芳|M5|22', '销售中心|示例科技|陈刚|M5|36', '职能中心|示例科技|赵敏|M5|18',
@@ -979,28 +985,57 @@ var OrgCore = (function () {
     '人力资源部|职能中心|葛薇|P6|8', '财务部|职能中心|奚亮|P6|6', '行政部|职能中心|范冰|P5|4',
   ].map(line => line.split('|'));
 
-  // 导入模板示例：表头 + 填写说明 + 3 层示例（示例科技 → 技术中心/产品中心 → 前端部）
-  const TEMPLATE_SAMPLE = [
-    '示例科技||王总|M6|120',
-    '技术中心|示例科技|李明|M5|58',
-    '产品中心|示例科技|周芳|M5|22',
-    '前端部|技术中心|孙浩|M4|12',
+  // 汇报树：主字段=姓名，上级=主管
+  const SAMPLE_PERSON_AOA = [
+    '姓名|主管|职级|部门|岗位|工号',
+    '王总||M6|总经办|CEO|A001', '李明|王总|M5|研发中心|研发副总裁|A002', '周芳|王总|M5|产品中心|产品副总裁|A003',
+    '陈刚|王总|M5|销售中心|销售副总裁|A004', '赵敏|王总|M5|职能中心|HR副总裁|A005',
+    '孙浩|李明|M4|前端部|前端负责人|A010', '吴磊|李明|M4|后端部|后端负责人|A011', '郑爽|李明|M4|测试部|测试负责人|A012', '冯涛|李明|P8|架构组|首席架构师|A013',
+    '何静|孙浩|P6|前端部|高级工程师|A020', '吕洋|孙浩|P5|前端部|工程师|A021', '施琪|孙浩|P5|前端部|工程师|A022',
+    '张伟|吴磊|P7|后端部|技术经理|A023', '许杰|吴磊|P6|后端部|高级工程师|A024', '韩梅|吴磊|P6|后端部|高级工程师|A025',
+    '曹宇|张伟|P5|后端部|工程师|A030', '严宁|张伟|P4|后端部|工程师|A031', '鲁达|郑爽|P6|测试部|测试专家|A032',
+    '金晨|周芳|P7|产品中心|产品总监|A040', '魏然|周芳|P6|设计部|设计负责人|A041', '陶然|金晨|P5|产品中心|产品经理|A042', '姜楠|金晨|P5|产品中心|产品经理|A043',
+    '戚彬|陈刚|M3|华北大区|大区经理|A050', '谢婷|陈刚|M3|华东大区|大区经理|A051', '邹凯|陈刚|M3|华南大区|大区经理|A052',
+    '喻洁|陈刚|M3|西南大区|大区经理|A053', '柏松|陈刚|M3|西北大区|大区经理|A054', '水莹|陈刚|M3|华中大区|大区经理|A055',
+    '窦明|陈刚|M3|东北大区|大区经理|A056', '章程|陈刚|M3|海外事业部|总经理|A057', '云飞|陈刚|M3|渠道部|渠道经理|A058',
+    '苏晓|谢婷|P5|华东大区|客户经理|A060', '潘越|谢婷|P5|华东大区|客户经理|A061',
+    '葛薇|赵敏|P6|人力资源部|HRBP|A070', '奚亮|赵敏|P6|财务部|财务经理|A071', '范冰|赵敏|P5|行政部|行政主管|A072',
   ].map(line => line.split('|'));
-  const TEMPLATE_AOA = (() => {
-    const head = SAMPLE_AOA[0];
-    const guides = ['部门（必填）', '上级部门（顶层留空）', '组织负责人', '职级（负责人职级）', '下级人数（可选）'];
-    return [head, guides, ...TEMPLATE_SAMPLE];
-  })();
-  const generateTemplate = (XLSX) => {
+
+  // 兼容旧引用：默认指组织树
+  const SAMPLE_AOA = SAMPLE_ORG_AOA;
+
+  // 导入模板：两种场景各一份（表头 + 填写说明 + 3 层示例）
+  const TEMPLATE_AOA_ORG = [
+    SAMPLE_ORG_AOA[0],
+    ['部门（必填）', '上级部门（顶层留空）', '组织负责人', '职级（负责人职级）', '下级人数（可选）'],
+    ['示例科技', '', '王总', 'M6', '120'],
+    ['技术中心', '示例科技', '李明', 'M5', '58'],
+    ['产品中心', '示例科技', '周芳', 'M5', '22'],
+    ['前端部', '技术中心', '孙浩', 'M4', '12'],
+  ];
+  const TEMPLATE_AOA_PERSON = [
+    SAMPLE_PERSON_AOA[0],
+    ['姓名（必填）', '主管（上级，顶层留空）', '职级（可选）', '部门（可选）', '岗位（可选）', '工号（上级填工号时必填）'],
+    ['王总', '', 'M6', '总经办', 'CEO', 'A001'],
+    ['李明', '王总', 'M5', '研发中心', '研发副总裁', 'A002'],
+    ['周芳', '王总', 'M5', '产品中心', '产品副总裁', 'A003'],
+    ['孙浩', '李明', 'M4', '前端部', '前端负责人', 'A010'],
+  ];
+  const TEMPLATE_AOA = TEMPLATE_AOA_ORG;   // 兼容旧引用
+  const TEMPLATE_AOAS = { org: TEMPLATE_AOA_ORG, person: TEMPLATE_AOA_PERSON };
+  const generateTemplate = (XLSX, kind) => {
+    const aoa = TEMPLATE_AOAS[kind] || TEMPLATE_AOA_ORG;
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(TEMPLATE_AOA);
-    ws['!cols'] = TEMPLATE_AOA[0].map((h, i) => ({ wch: Math.max(10, h.length * 2 + 2, ...TEMPLATE_AOA.slice(1).map(r => String(r[i] || '').length + 2)) }));
-    XLSX.utils.book_append_sheet(wb, ws, '人员');
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = aoa[0].map((h, i) => ({ wch: Math.max(10, h.length * 2 + 2, ...aoa.slice(1).map(r => String(r[i] || '').length + 2)) }));
+    XLSX.utils.book_append_sheet(wb, ws, kind === 'person' ? '人员' : '组织');
     XLSX.writeFile(wb, '架构树导入模板.xlsx');
   };
 
   return {
-    MIME_PPTX, VIRTUAL_ROOT_ID, SAMPLE_AOA, generateTemplate,
+    MIME_PPTX, VIRTUAL_ROOT_ID, SAMPLE_AOA, SAMPLE_ORG_AOA, SAMPLE_PERSON_AOA,
+    TEMPLATE_AOA_ORG, TEMPLATE_AOA_PERSON, generateTemplate,
     normalizeTable, autoMap, defaultVisibleFields, buildTree, isRootValue,
     walk, indexTree, ancestorsOf, orderChildren, searchTree, childrenVisible, visibleTree,
     buildPptLayout, buildPptx, _zipStore, _crc32, _escXml,
@@ -1044,6 +1079,7 @@ const ICONS = {
   edit: 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z',
   plus: 'M12 5v14M5 12h14',
   trash: 'M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6',
+  chev: 'M6 9l6 6 6-6',
 };
 function Icon({ name, size }) {
   return (
@@ -1594,6 +1630,7 @@ function App() {
   const [editNode, setEditNode] = useState(null);       // { node, isNew } 编辑/新建弹窗
   const [delNode, setDelNode] = useState(null);         // 删除确认弹窗目标
   const [versionOpen, setVersionOpen] = useState(false);
+  const [templateMenu, setTemplateMenu] = useState(false);
   const [versions, setVersions] = useState([]);
   const [autoVersion, setAutoVersion] = useState(null);  // 开页自动加载的版本名（显示提示条）
   const originalRef = useRef(null);                       // 本页原始烘焙数据（用于"恢复原始数据"）
@@ -1615,6 +1652,13 @@ function App() {
     setTitle(t => (String(titleDraft).trim() || t));
     setEditingTitle(false);
   }, [titleDraft]);
+  // 模板菜单：点击外部关闭
+  useEffect(() => {
+    if (!templateMenu) return undefined;
+    const onDown = (e) => { if (!(e.target.closest && e.target.closest('[data-tpl-btn], .menu'))) setTemplateMenu(false); };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [templateMenu]);
 
   const mapped = !!table && !mappingError(map, table.headers);
   const built = useMemo(() => (mapped ? C.buildTree(table.rows, map, { rootName: title }) : null), [table, map, mapped]);
@@ -1727,14 +1771,23 @@ function App() {
       if (fileRef.current) fileRef.current.value = '';
     }
   }, [loadTable, notify, title]);
-  const loadSample = () => loadTable({ ...C.normalizeTable(C.SAMPLE_AOA), fileName: '示例数据' }, null,
-    { title: '示例公司组织架构', autoApply: true, maxDepth: DEFAULT_DEPTH });
-  const downloadTemplate = async () => {
+  // 示例：kind='org' 组织树（部门维度）/ 'person' 汇报树（人员汇报关系）
+  const loadSample = (kind) => {
+    const isPerson = kind === 'person';
+    const aoa = isPerson ? C.SAMPLE_PERSON_AOA : C.SAMPLE_ORG_AOA;
+    loadTable({ ...C.normalizeTable(aoa), fileName: isPerson ? '汇报树示例' : '组织树示例' }, null, {
+      title: isPerson ? '示例公司 · 汇报树' : '示例公司 · 组织架构',
+      autoApply: true, maxDepth: DEFAULT_DEPTH,
+    });
+  };
+  const downloadTemplate = async (kind) => {
+    const k = kind === 'person' ? 'person' : 'org';
+    setTemplateMenu(false);
     setBusy('正在生成模板…');
     try {
       const XLSX = await ensureLib('xlsx');
-      C.generateTemplate(XLSX);
-      notify('模板已下载：第一行是表头，第二行是填写说明，导入时会自动跳过说明行');
+      C.generateTemplate(XLSX, k);
+      notify(k === 'person' ? '已下载汇报树模板（姓名 / 主管 …）' : '已下载组织树模板（部门 / 上级部门 …）');
     } catch (e) { notify('模板生成失败：' + e.message, 'error'); }
     finally { setBusy(''); }
   };
@@ -2171,7 +2224,28 @@ function App() {
             </div>
             <span className="ctl-sep" />
             <div className="ctl-group">
-              <button type="button" className="btn" onClick={downloadTemplate}><Icon name="sheet" />下载模板</button>
+              <span className="popover-anchor">
+                <button type="button" className="btn" data-tpl-btn="1" aria-expanded={templateMenu} onClick={() => setTemplateMenu(v => !v)}>
+                  <Icon name="sheet" />下载模板<Icon name="chev" size={12} />
+                </button>
+                {templateMenu && (
+                  <div className="menu" role="menu">
+                    <button type="button" role="menuitem" onClick={() => downloadTemplate('org')}>
+                      <b>组织树模板</b><span>部门 / 上级部门 / 组织负责人 / 职级 / 下级人数</span>
+                    </button>
+                    <button type="button" role="menuitem" onClick={() => downloadTemplate('person')}>
+                      <b>汇报树模板</b><span>姓名 / 主管 / 职级 / 部门 / 岗位 / 工号</span>
+                    </button>
+                    <div className="menu-sep" />
+                    <button type="button" role="menuitem" onClick={() => { setTemplateMenu(false); loadSample('org'); }}>
+                      <b>查看组织树示例</b><span>用部门维度示例数据替换当前页面</span>
+                    </button>
+                    <button type="button" role="menuitem" onClick={() => { setTemplateMenu(false); loadSample('person'); }}>
+                      <b>查看汇报树示例</b><span>用人员汇报关系示例数据替换当前页面</span>
+                    </button>
+                  </div>
+                )}
+              </span>
             </div>
             <span className="ctl-sep" />
             <div className="ctl-group">
@@ -2235,14 +2309,20 @@ function App() {
               <h2>导入 Excel 生成架构树</h2>
               <p>把 Excel 文件拖到这里，或点击下方按钮选择文件（读取第一个工作表，第一行为表头）。</p>
               <ol>
-                <li>每行一个节点，需有<b>主字段</b>（如 姓名）和<b>上级字段</b>（如 主管）。</li>
+                <li>每行一个节点，需有<b>主字段</b>（组织树填"部门"，汇报树填"姓名"）和<b>上级字段</b>（如 上级部门 / 主管）。</li>
                 <li>上级字段的值要能在主字段（或你指定的标识列，如工号）中找到；为空即顶层节点。</li>
                 <li>导入后在"字段设置"确认映射，在"显示设置"选择节点上展示的字段。</li>
               </ol>
               <div className="empty-actions">
                 <button type="button" className="btn primary lg" onClick={() => fileRef.current.click()}><Icon name="upload" />选择 Excel</button>
-                <button type="button" className="btn ghost lg" onClick={downloadTemplate}><Icon name="sheet" />下载模板</button>
-                <button type="button" className="btn ghost lg" onClick={loadSample}><Icon name="layers" />查看示例</button>
+              </div>
+              <div className="empty-actions" style={{ marginTop: 10 }}>
+                <button type="button" className="btn ghost lg" onClick={() => loadSample('org')}><Icon name="layers" />组织树示例</button>
+                <button type="button" className="btn ghost lg" onClick={() => loadSample('person')}><Icon name="layers" />汇报树示例</button>
+              </div>
+              <div className="empty-actions" style={{ marginTop: 10 }}>
+                <button type="button" className="btn ghost lg" onClick={() => downloadTemplate('org')}><Icon name="sheet" />组织树模板</button>
+                <button type="button" className="btn ghost lg" onClick={() => downloadTemplate('person')}><Icon name="sheet" />汇报树模板</button>
               </div>
             </div>
           </div>

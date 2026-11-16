@@ -167,32 +167,48 @@ def csv_list(s):
     return [x.strip() for x in s.split(",") if x.strip()] if s else None
 
 
-def save_template(path, sheet="人员"):
-    """生成与页面"下载模板"一致的 .xlsx（表头 + 填写说明 + 3 行示例）。"""
+def save_template(path, kind="org", sheet=None):
+    """生成与页面"下载模板"一致的 .xlsx（表头 + 填写说明 + 3 层示例）。
+
+    kind: 'org' 组织树（部门维度）/ 'person' 汇报树（人员汇报关系）。
+    """
     try:
         import openpyxl
     except ImportError:
         sys.exit("缺少 openpyxl：请先执行 pip install openpyxl")
+    kind = "person" if str(kind).lower().startswith("p") else "org"
     tpl = Path(DEFAULT_TEMPLATE).read_text(encoding="utf-8")
-    # 从模板解析：表头(SAMPLE_AOA 第一行) + 填写说明(guides) + 示例(TEMPLATE_SAMPLE，含 3 层)
-    ms = re.search(r"const SAMPLE_AOA = \[([\s\S]*?)\]\.map\(line => line\.split\('\|'\)\)", tpl)
-    mg = re.search(r"const guides = \[([\s\S]*?)\];", tpl)
-    mt = re.search(r"const TEMPLATE_SAMPLE = \[([\s\S]*?)\]\.map\(line => line\.split\('\|'\)\)", tpl)
-    if not (ms and mg and mt):
-        sys.exit("模板中未找到 SAMPLE_AOA/guides/TEMPLATE_SAMPLE，请检查 org-chart-template.html")
-    header_line = next((x.strip().strip("'") for x in ms.group(1).split(",") if x.strip()), "")
-    header_row = [c for c in header_line.split("|")]
-    guide_row = [m.strip().strip("'") for m in re.findall(r"'((?:[^'\\]|\\.)*)'", mg.group(1))]
-    sample_rows = [ln.strip().strip("'").split("|") for ln in re.findall(r"'((?:[^'\\]|\\.)*)'", mt.group(1))]
+    sample_name = "SAMPLE_PERSON_AOA" if kind == "person" else "SAMPLE_ORG_AOA"
+    tpl_name = "TEMPLATE_AOA_PERSON" if kind == "person" else "TEMPLATE_AOA_ORG"
+    # 表头：取示例数据第一行（形如 '部门|上级部门|...'）
+    ms = re.search(r"const " + sample_name + r" = \[([\s\S]*?)\]\.map\(", tpl)
+    if not ms:
+        sys.exit(f"模板中未找到 {sample_name}，请检查 org-chart-template.html")
+    first = re.search(r"'((?:[^'\\]|\\.)*)'", ms.group(1))
+    if not first:
+        sys.exit(f"{sample_name} 首行解析失败")
+    header_row = first.group(1).split("|")
+    # 说明行 + 示例行：TEMPLATE_AOA_* 里的字面量数组，每个数组一行
+    mt = re.search(r"const " + tpl_name + r" = \[([\s\S]*?)\];", tpl)
+    if not mt:
+        sys.exit(f"模板中未找到 {tpl_name}，请检查 org-chart-template.html")
+    rows = []
+    for block in re.findall(r"\[([^\[\]]*)\]", mt.group(1)):
+        vals = [x.strip().strip("'") for x in re.findall(r"'((?:[^'\\]|\\.)*)'", block)]
+        if vals:
+            rows.append(vals)
+    if len(rows) < 3:
+        sys.exit(f"{tpl_name} 解析失败，请检查 org-chart-template.html")
+    guide_row, sample_rows = rows[0], rows[1:]
+    if len(header_row) != len(guide_row) or len(header_row) < 2:
+        sys.exit(f"模板行解析失败：表头 {len(header_row)} 列 / 说明 {len(guide_row)} 列，请检查 org-chart-template.html")
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = sheet
+    ws.title = sheet or ("人员" if kind == "person" else "组织")
     ws.append(header_row)
     ws.append(guide_row)
     for row in sample_rows:
         ws.append([c.replace("\\u00a0", " ") for c in row])
-    if len(header_row) != len(guide_row) or len(header_row) < 2:
-        sys.exit(f"模板行解析失败：表头 {len(header_row)} 列 / 说明 {len(guide_row)} 列，请检查 org-chart-template.html")
     from openpyxl.styles import Font, PatternFill
     for c in ws[1]:
         c.font = Font(bold=True)
@@ -226,12 +242,15 @@ def main():
     ap.add_argument("--title", help="页面标题，默认取文件名")
     ap.add_argument("--agg", action="append", default=[], metavar="方式[:字段][:范围][:名称]",
                     help="聚合统计字段，可重复；如 count、sum:HC、dist:职级:direct（--inspect 查看全部取值）")
-    ap.add_argument("--dump-template", metavar="路径", help="把页面内下载的导入模板另存为 .xlsx（无需 --excel）")
+    ap.add_argument("--dump-template", metavar="路径", help="把导入模板另存为 .xlsx（无需 --excel）")
+    ap.add_argument("--sample", choices=["org", "person"], default="org",
+                    help="模板/示例类别：org=组织树（部门维度，默认），person=汇报树（人员汇报关系）")
     args = ap.parse_args()
 
     if args.dump_template:
-        save_template(args.dump_template)
-        print(f"已导出导入模板：{Path(args.dump_template).resolve()}")
+        save_template(args.dump_template, kind=args.sample)
+        label = "汇报树模板" if args.sample == "person" else "组织树模板"
+        print(f"已导出{label}：{Path(args.dump_template).resolve()}")
         return
 
     if not args.excel:
